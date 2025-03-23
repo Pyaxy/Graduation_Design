@@ -7,6 +7,7 @@ until PGPASSWORD=$DB_PASSWORD psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c 
   sleep 2
 done
 # database migrate
+python manage.py makemigrations
 python manage.py migrate
 
 # execute COMMAND

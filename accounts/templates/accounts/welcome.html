@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>欢迎页 - CodeCollab</title>
+  <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+  <div class="container mt-5">
+    <div class="alert alert-success">
+      <h4 class="alert-heading">登录成功！</h4>
+      <p>当前登录角色：<strong>{{ role }}</strong></p>
+      <hr>
+      <p class="mb-0">用户信息：{{ user.name }}（{{ user.user_id }}） - {{ user.school }}</p>
+    </div>
+  </div>
+</body>
+
+</html>
