@@ -2,13 +2,15 @@
 import { reactive, ref } from 'vue';
 import { message } from 'ant-design-vue';
 import axios from 'axios';
+import { apiClient } from '@/utils/auth';
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue';
 
 // 表单引用和响应式状态
 const formRef = ref();
 const formState = reactive({
   email: '',
-  password: ''
+  password: '',
+  rememberMe: false // 用户记住状态
 });
 
 // 验证规则配置
@@ -47,16 +49,38 @@ const handleLogin = async () => {
     await formRef.value.validate();
     
     loading.value = true;
-    const response = await axios.post('http://localhost:8000/accounts/login/', {
+    // 向后端发送鉴权请求
+    // const response = await axios.post('/accounts/login/', {
+    //   email: formState.email,
+    //   password: formState.password
+    // }, {
+    //   headers: { 'Content-Type': 'application/json' }
+    // });
+    // 使用带拦截器的axios实例向后端发送鉴权请求
+    const response = await apiClient.post('/accounts/login/', {
       email: formState.email,
       password: formState.password
     }, {
       headers: { 'Content-Type': 'application/json' }
     });
 
-    localStorage.setItem('access_token', response.data.access);
-    localStorage.setItem('refresh_token', response.data.refresh);
+    // 将短期 access token 存储在会话中，关闭浏览器即失效
+    sessionStorage.setItem('access_token', response.data.access);
+    sessionStorage.setItem('role', response.data.role);
+    sessionStorage.setItem('user_id', response.data.user_id);
+    sessionStorage.setItem('name', response.data.name);
+
+    if (formState.rememberMe) {
+      localStorage.setItem('refresh_token', response.data.refresh);
+    } else {
+      sessionStorage.setItem('refresh_token', response.data.refresh);
+      // const token = encodeURIComponent(response.data.refresh);
+      // // 设置 HttpOnly Cookie
+      // document.cookie = `refresh_token=${token}; Path=/; ${formState.rememberMe ? 'Max-Age=604800' : 'Max-Age=86400'}; SameSite=Strict; HttpOnly`;
+    }
     message.success('登录成功，正在跳转...');
+
+    
     // 后续添加路由跳转逻辑
     
   } catch (error) {
@@ -91,6 +115,7 @@ const handleApiError = (error) => {
 
 <template>
   <div class="login-container">
+    <!-- 登录box -->
     <a-card title="CodeCollab 登录" class="login-card">
       <a-form
         ref="formRef"
@@ -99,6 +124,7 @@ const handleApiError = (error) => {
         layout="vertical"
         @keypress.enter="handleLogin"
       >
+      <!-- 输入邮箱 -->
         <a-form-item name="email">
           <template #label>
             <span class="form-label">邮箱</span>
@@ -112,7 +138,7 @@ const handleApiError = (error) => {
             </template>
           </a-input>
         </a-form-item>
-
+        <!-- 输入密码 -->
         <a-form-item name="password">
           <template #label>
             <span class="form-label">密码</span>
@@ -126,7 +152,10 @@ const handleApiError = (error) => {
             </template>
           </a-input-password>
         </a-form-item>
-
+        <!-- 记住我 -->
+        <a-form-item>
+          <a-checkbox v-model:checked="formState.rememberMe">记住我</a-checkbox>
+        </a-form-item>
         <a-form-item>
           <a-button
             type="primary"

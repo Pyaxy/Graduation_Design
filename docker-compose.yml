@@ -25,6 +25,7 @@ services:
       - ./frontend/docker/entrypoint.sh:/entrypoint.sh
       - /app/node_modules # 防止宿主机覆盖容器内依赖
     environment:
+      - .env
       - CHOKIDAR_USRPOLLING=true
     ports:
       - "5173:5173"
