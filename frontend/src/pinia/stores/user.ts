@@ -64,8 +64,12 @@ export const useUserStore = defineStore("user", () => {
     user_id.value = ""
     role.value = ""
     username.value = ""
+    // 重置路由
     resetRouter()
+    // 重置标签页
     resetTagsView()
+    // 刷新页面
+    location.reload()
   }
 
   // 重置 Token

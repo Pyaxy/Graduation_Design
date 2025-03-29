@@ -26,6 +26,7 @@ export function registerNavigationGuard(router: Router) {
     NProgress.start()
     // 获取用户信息
     const userStore = useUserStore()
+    // 获取权限信息，主要用于生成可访问的路由
     const permissionStore = usePermissionStore()
     // 如果没有登录
     if (!getToken()) {
@@ -35,9 +36,13 @@ export function registerNavigationGuard(router: Router) {
       return LOGIN_PATH
     }
     // 如果已经登录，并准备进入 Login 页面，则重定向到主页
-    if (to.path === LOGIN_PATH) return "/"
+    if (to.path === LOGIN_PATH) {
+      return true
+    }
     // 如果用户已经获得其权限角色
-    if (userStore.roles.length !== 0) return true
+    if (userStore.roles.length !== 0) {
+      return true
+    }
     // 否则要重新获取权限角色
     try {
       await userStore.getInfo()
@@ -45,8 +50,12 @@ export function registerNavigationGuard(router: Router) {
       const roles = userStore.roles
       // 生成可访问的 Routes
       routerConfig.dynamic ? permissionStore.setRoutes(roles) : permissionStore.setAllRoutes()
-      // 将 "有访问权限的动态路由" 添加到 Router 中
-      permissionStore.addRoutes.forEach(route => router.addRoute(route))
+      // 只添加动态路由到路由实例中
+      permissionStore.addRoutes.forEach(route => {
+        if (!router.hasRoute(route.name as string)) {
+          router.addRoute(route)
+        }
+      })
       // 设置 replace: true, 因此导航将不会留下历史记录
       return { ...to, replace: true }
     } catch (error) {

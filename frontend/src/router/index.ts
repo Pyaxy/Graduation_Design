@@ -8,7 +8,8 @@ const Layouts = () => import("@/layouts/index.vue")
 
 /**
  * @name 常驻路由
- * @description 除了 redirect/403/404/login 等隐藏页面，其他页面建议设置唯一的 Name 属性
+ * @description 除了 redirect/403/404/login 等隐藏页面，其他页面建议设置唯一的 Name 属性；
+ * @description 只能放入无权限访问的路由，有访问权限的路由必须放在动态路由中
  */
 export const constantRoutes: RouteRecordRaw[] = [
   {
@@ -49,10 +50,15 @@ export const constantRoutes: RouteRecordRaw[] = [
   {
     path: "/",
     component: Layouts,
-    redirect: "/dashboard",
+    meta: {
+      title: "首页",
+      svgIcon: "dashboard",
+      affix: true,
+      hidden: false
+    },
     children: [
       {
-        path: "dashboard",
+        path: "",
         component: () => import("@/pages/dashboard/index.vue"),
         name: "Dashboard",
         meta: {
@@ -186,7 +192,7 @@ export const constantRoutes: RouteRecordRaw[] = [
 
 /**
  * @name 动态路由
- * @description 用来放置有权限 (Roles 属性) 的路由
+ * @description 用来放置有权限 (Roles 属性) 的路由，凡是需要权限访问的页面，必须放到这里
  * @description 必须带有唯一的 Name 属性
  */
 export const dynamicRoutes: RouteRecordRaw[] = [
@@ -198,8 +204,7 @@ export const dynamicRoutes: RouteRecordRaw[] = [
     meta: {
       title: "权限演示",
       elIcon: "Lock",
-      // 可以在根路由中设置角色
-      roles: ["admin", "editor"],
+      roles: ["ADMIN"],
       alwaysShow: true
     },
     children: [
@@ -209,8 +214,7 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         name: "PermissionPageLevel",
         meta: {
           title: "页面级",
-          // 或者在子路由中设置角色
-          roles: ["admin"]
+          roles: ["ADMIN"]
         }
       },
       {
@@ -219,8 +223,36 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         name: "PermissionButtonLevel",
         meta: {
           title: "按钮级",
-          // 如果未设置角色，则表示：该页面不需要权限，但会继承根路由的角色
-          roles: undefined
+          roles: ["ADMIN"]
+        }
+      }
+    ]
+  },
+  {
+    path: "/student",
+    component: Layouts,
+    name: "Student",
+    meta: {
+      title: "学生测试栏1",
+      roles: ["STUDENT"]
+    },
+    children: [
+      {
+        path: "stu-test",
+        component: () => import("@/pages/student/stu-test.vue"),
+        name: "StudentTest",
+        meta: {
+          title: "学生权限测试",
+          roles: ["STUDENT"]
+        }
+      },
+      {
+        path: "stu-test2",
+        component: () => import("@/pages/student/stu-test2.vue"),
+        name: "StudentTest2",
+        meta: {
+          title: "学生权限测试2",
+          roles: ["STUDENT"]
         }
       }
     ]
@@ -236,7 +268,7 @@ export const router = createRouter({
 /** 重置路由 */
 export function resetRouter() {
   try {
-    // 注意：所有动态路由路由必须带有 Name 属性，否则可能会不能完全重置干净
+    // 按照 Name 属性删除路由，所以 Name 属性必须唯一
     router.getRoutes().forEach((route) => {
       const { name, meta } = route
       if (name && meta.roles?.length) {

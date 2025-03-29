@@ -21,12 +21,11 @@ services:
       dockerfile: Dockerfile
     command: npm run dev
     volumes:
-      - ./frontend/:/app
-      - ./frontend/docker/entrypoint.sh:/entrypoint.sh
-      - /app/node_modules # 防止宿主机覆盖容器内依赖
+      - ./frontend:/app:delegated
+      - frontend_node_modules:/app/node_modules
     environment:
-      - .env
-      - CHOKIDAR_USRPOLLING=true
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
     ports:
       - "5173:5173"
 
@@ -48,4 +47,5 @@ services:
 
 volumes:
   postgres_data:
+  frontend_node_modules:
 

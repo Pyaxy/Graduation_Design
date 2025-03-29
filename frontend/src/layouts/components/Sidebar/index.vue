@@ -20,6 +20,7 @@ const permissionStore = usePermissionStore()
 const settingsStore = useSettingsStore()
 
 const activeMenu = computed(() => route.meta.activeMenu || route.path)
+// 获取所有不隐藏的路由
 const noHiddenRoutes = computed(() => permissionStore.routes.filter(item => !item.meta?.hidden))
 const isCollapse = computed(() => !appStore.sidebar.opened)
 const isLogo = computed(() => isLeft.value && settingsStore.showLogo)

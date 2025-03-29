@@ -4,25 +4,40 @@ import { constantRoutes, dynamicRoutes } from "@/router"
 import { routerConfig } from "@/router/config"
 import { flatMultiLevelRoutes } from "@/router/helper"
 
-function hasPermission(roles: string[], route: RouteRecordRaw) {
+// 判断是否具有访问权限
+function hasPermission(roles: string[], route: RouteRecordRaw, parentRoute?: RouteRecordRaw): boolean {
   const routeRoles = route.meta?.roles
-  return routeRoles ? roles.some(role => routeRoles.includes(role)) : true
+  // 如果路由没有设置roles，则继承父路由的roles
+  if (!routeRoles) {
+    return parentRoute ? hasPermission(roles, parentRoute) : true
+  }
+  return roles.some(role => routeRoles.includes(role))
 }
 
+// 根据角色过滤并生成动态路由，返回可访问的路由，并生成二级路由
 function filterDynamicRoutes(routes: RouteRecordRaw[], roles: string[]) {
   const res: RouteRecordRaw[] = []
   routes.forEach((route) => {
     const tempRoute = { ...route }
+    // 判断是否具有访问权限
     if (hasPermission(roles, tempRoute)) {
+      // 如果存在子路由，则递归过滤子路由
       if (tempRoute.children) {
-        tempRoute.children = filterDynamicRoutes(tempRoute.children, roles)
+        tempRoute.children = filterDynamicRoutes(tempRoute.children, roles).map(child => ({
+          ...child,
+          meta: { ...child.meta, roles: child.meta?.roles || tempRoute.meta?.roles }
+        }))
       }
+      // 将可访问的路由添加到结果数组中
       res.push(tempRoute)
     }
   })
   return res
 }
-
+/**
+ * @name 权限store
+ * @description 用于生成可访问的路由,在路由守卫中被加载
+ */
 export const usePermissionStore = defineStore("permission", () => {
   // 可访问的路由
   const routes = ref<RouteRecordRaw[]>([])

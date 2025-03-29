@@ -10,6 +10,8 @@ import { useRouter } from "vue-router"
 import { loginApi } from "./apis"
 import Owl from "./components/Owl.vue"
 import { useFocus } from "./composables/useFocus"
+import { usePermissionStore } from "@/pinia/stores/permission"
+import { routerConfig } from "@/router/config"
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -17,7 +19,7 @@ const settingsStore = useSettingsStore()
 const { isFocus, handleBlur, handleFocus } = useFocus()
 
 /** 登录表单元素的引用 */
-const loginFormRef = ref<FormInstance | null>(null)
+const loginFormRef = ref<FormInstance>()
 
 /** 登录按钮 Loading */
 const loading = ref(false)
@@ -41,27 +43,46 @@ const loginFormRules: FormRules = {
 }
 
 /** 登录 */
-function handleLogin() {
-  loginFormRef.value?.validate((valid) => {
+async function handleLogin() {
+  loginFormRef.value?.validate(async (valid) => {
     if (!valid) {
-      ElMessage.error("表单校验不通过")
       return
     }
-    loading.value = true
-    loginApi(loginFormData).then((response) => {
+    try {
+      loading.value = true
+      const response = await loginApi(loginFormData)
+      // 设置 token
       userStore.setAccessToken(response.data.access)
       userStore.setRefreshToken(response.data.refresh)
+      // 设置用户信息
       userStore.setUserInfo({
         user_id: response.data.user_id,
         role: response.data.role,
         name: response.data.name
       })
+      // 获取用户信息
+      await userStore.getInfo()
+      // 获取权限信息，主要用于生成可访问的路由
+      const permissionStore = usePermissionStore()
+      // 等待 permission store 初始化
+      await new Promise(resolve => setTimeout(resolve, 200))
+      // 设置路由
+      routerConfig.dynamic ? permissionStore.setRoutes(userStore.roles) : permissionStore.setAllRoutes()
+      // 只添加动态路由到路由实例中
+      permissionStore.addRoutes.forEach(route => {
+        if (!router.hasRoute(route.name as string)) {
+          router.addRoute(route)
+        }
+      })
+      // 跳转到首页
       router.push("/")
-    }).catch(() => {
-      loginFormData.password = ""
-    }).finally(() => {
+    } catch (error) {
+      ElMessage.error((error as Error).message || "登录失败")
+    } finally {
       loading.value = false
-    })
+    }
+  }).catch(() => {
+    // 表单验证失败
   })
 }
 </script>
