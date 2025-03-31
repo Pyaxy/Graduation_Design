@@ -4,6 +4,7 @@ from rest_framework_simplejwt.serializers import (
 )
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
+from rest_framework import serializers
 
 
 # 验证时返回自定义token
@@ -41,3 +42,12 @@ class CustomTokenRefreshPairSerializer(TokenRefreshSerializer):
 
         data.update({"role": user.role, "user_id": user.user_id, "name": user.name})
         return data
+
+
+class CurrentUserSerializer(serializers.ModelSerializer):
+    """当前用户信息序列化器"""
+    
+    class Meta:
+        model = User
+        fields = ['user_id', 'name', 'role']
+        read_only_fields = fields
