@@ -56,13 +56,17 @@ export const usePermissionStore = defineStore("permission", () => {
     set(dynamicRoutes)
   }
 
+  const setCommonRoutes = () => {
+    routes.value = constantRoutes
+  }
+
   // 统一设置
   const set = (accessedRoutes: RouteRecordRaw[]) => {
     routes.value = constantRoutes.concat(accessedRoutes)
     addRoutes.value = routerConfig.thirdLevelRouteCache ? flatMultiLevelRoutes(accessedRoutes) : accessedRoutes
   }
 
-  return { routes, addRoutes, setRoutes, setAllRoutes }
+  return { routes, addRoutes, setRoutes, setAllRoutes, setCommonRoutes }
 })
 
 /**

@@ -30,6 +30,7 @@ export function registerNavigationGuard(router: Router) {
     const permissionStore = usePermissionStore()
     // 如果没有登录
     if (!getToken()) {
+      permissionStore.setCommonRoutes()
       // 如果在免登录的白名单中，则直接进入
       if (isWhiteList(to)) return true
       // 其他没有访问权限的页面将被重定向到登录页面

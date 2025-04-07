@@ -159,7 +159,7 @@ class TokenRefreshViewTestCase(APITestCase):
         self.assertIn("message", response.data)
         # 断言响应数据内容
         self.assertEqual(response.data["data"], None)
-        self.assertEqual(response.data["message"], "无效的刷新令牌")
+        self.assertEqual(response.data["message"], "Token is invalid")
 
     def test_refresh_token_missing(self):
         """测试未提供刷新令牌"""
@@ -173,7 +173,7 @@ class TokenRefreshViewTestCase(APITestCase):
         self.assertIn("message", response.data)
         # 断言响应数据内容
         self.assertEqual(response.data["data"], None)
-        self.assertEqual(response.data["message"], "刷新令牌不能为空")
+        self.assertEqual(response.data["message"], "刷新令牌不能为空或无效")
 
 class CurrentUserViewTestCase(APITestCase):
     """获取当前用户信息测试接口"""
@@ -245,5 +245,4 @@ class CurrentUserViewTestCase(APITestCase):
         self.assertIn("message", response.data)
         # 断言响应数据内容
         self.assertEqual(response.data["data"], None)
-        self.assertEqual(response.data["message"], "未提供有效的访问令牌或令牌已过期")
-        
+        self.assertEqual(response.data["message"], "Token is invalid")

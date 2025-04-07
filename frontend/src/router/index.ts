@@ -13,6 +13,13 @@ const Layouts = () => import("@/layouts/index.vue")
  */
 export const constantRoutes: RouteRecordRaw[] = [
   {
+    path: "/register",
+    component: () => import("@/pages/register/index.vue"),
+    meta: {
+      hidden: true
+    }
+  },
+  {
     path: "/redirect",
     component: Layouts,
     meta: {

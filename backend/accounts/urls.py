@@ -12,4 +12,5 @@ urlpatterns = [
         name="token_refresh",
     ),
     path("api/v1/accounts/user/", views.CurrentUserView.as_view(), name="current_user"),
+    path("api/v1/accounts/register/", views.RegisterView.as_view(), name="register"),
 ]

@@ -5,252 +5,194 @@ from rest_framework import status
 from ..serializers import (
     CustomTokenObtainPairSerializer,
     CustomTokenRefreshPairSerializer,
-    CurrentUserSerializer
+    CurrentUserSerializer,
+    UserRegisterSerializer,
+    BaseResponseSerializer
 )
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+from ..permissions import RegisterPermission
+from rest_framework.exceptions import ValidationError, PermissionDenied, AuthenticationFailed
 
 logger = logging.getLogger(__name__)
 
 
-class CurrentUserView(APIView):
-    """
-    获取当前登录用户信息的接口
+class BaseAPIView(APIView):
+    """基础API视图类"""
+    serializer_class = BaseResponseSerializer
 
-    请求方式: GET
-    请求头:
-        Authorization: Bearer <access_token>
+    def get_response(self, data=None, message='', status_code=status.HTTP_200_OK):
+        """获取统一格式的响应"""
+        # 直接构造响应数据，不使用序列化器
+        return Response({
+            'data': data,
+            'message': message
+        }, status=status_code)
 
-    权限要求:
-        - 需要用户已登录（携带有效的 access_token）
+    def handle_exception(self, exc):
+        """处理异常"""
+        # 获取当前视图类名，用于提供更具体的错误信息
+        view_name = self.__class__.__name__
+        
+        if isinstance(exc, ValidationError):
+            logger.info(f'{view_name} 发生了ValidationError')
+            # 处理验证错误
+            if isinstance(exc.detail, dict):
+                # 处理字段级别的错误
+                field_names = {
+                    'email': '邮箱',
+                    'password': '密码',
+                    'confirm_password': '确认密码',
+                    'user_id': '学号',
+                    'name': '姓名',
+                    'school': '学校',
+                    'refresh': '刷新令牌'
+                }
+                
+                # 处理刷新令牌相关错误
+                if view_name == 'CustomTokenRefreshView' and 'refresh' in exc.detail:
+                    return self.get_response(None, '刷新令牌不能为空或无效', status.HTTP_400_BAD_REQUEST)
+                
+                # 处理登录相关错误
+                if view_name == 'LoginView':
+                    if 'email' in exc.detail and 'password' in exc.detail:
+                        return self.get_response(None, '邮箱和密码不能为空', status.HTTP_400_BAD_REQUEST)
+                    elif 'email' in exc.detail:
+                        return self.get_response(None, '邮箱不能为空', status.HTTP_400_BAD_REQUEST)
+                    elif 'password' in exc.detail:
+                        return self.get_response(None, '密码不能为空', status.HTTP_400_BAD_REQUEST)
+                
+                # 通用的必填字段错误处理
+                missing_fields = []
+                for field, errors in exc.detail.items():
+                    if isinstance(errors, list):
+                        for error in errors:
+                            if hasattr(error, 'code') and error.code == 'required':
+                                if field in field_names:
+                                    missing_fields.append(field_names[field])
+                                break
+                
+                if missing_fields:
+                    error_message = f"请填写以下必填项：{', '.join(missing_fields)}"
+                else:
+                    # 处理其他字段错误
+                    for field, errors in exc.detail.items():
+                        if isinstance(errors, list):
+                            error_message = str(errors[0])
+                            break
+                    else:
+                        error_message = str(exc.detail)
+            else:
+                error_message = str(exc.detail)
+            return self.get_response(None, error_message, status.HTTP_400_BAD_REQUEST)
+        elif isinstance(exc, PermissionDenied):
+            logger.info(f'{view_name} 发生了PermissionDenied')
+            # 处理权限错误
+            return self.get_response(None, str(exc.detail) if hasattr(exc, 'detail') else str(exc), status.HTTP_403_FORBIDDEN)
+        elif isinstance(exc, AuthenticationFailed):
+            logger.info(f'{view_name} 发生了AuthenticationFailed')
+            # 处理认证错误
+            if hasattr(exc, 'detail'):
+                if isinstance(exc.detail, dict):
+                    if 'messages' in exc.detail and isinstance(exc.detail['messages'], list):
+                        error_message = str(exc.detail['messages'][0].get('message', '认证失败'))
+                    else:
+                        error_message = str(exc.detail.get('detail', '认证失败'))
+                else:
+                    # 处理ErrorDetail对象
+                    error_message = str(exc.detail)
+                    # 针对不同视图提供更具体的错误信息
+                    if view_name == 'LoginView' and error_message == 'No active account found with the given credentials':
+                        error_message = '用户名或密码错误'
+                    elif view_name == 'CustomTokenRefreshView':
+                        if 'token_not_valid' in str(exc):
+                            error_message = '刷新令牌已过期或无效，请重新登录'
+            else:
+                error_message = '无效的访问令牌或令牌已过期'
+            return self.get_response(None, error_message, status.HTTP_401_UNAUTHORIZED)
+        elif hasattr(exc, 'status_code') and exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            logger.info(f'{view_name} 发生了HTTP_401_UNAUTHORIZED')
+            # 处理其他未认证错误
+            error_message = '未提供有效的访问令牌或令牌已过期'
+            # 针对不同视图提供更具体的错误信息
+            if view_name == 'CustomTokenRefreshView':
+                error_message = '刷新令牌已过期或无效，请重新登录'
+            return self.get_response(None, error_message, status.HTTP_401_UNAUTHORIZED)
+        # 处理其他错误
+        else:
+            logger.error(f'{view_name} 发生了未处理的异常: {str(exc)}')
+            # 根据不同的视图提供不同的错误信息
+            error_message = str(exc) if str(exc) else '服务器错误'
+            if view_name == 'LoginView':
+                error_message = '登录失败：' + error_message
+            elif view_name == 'RegisterView':
+                error_message = '注册失败：' + error_message
+            elif view_name == 'CustomTokenRefreshView':
+                error_message = '刷新令牌失败：' + error_message
+            elif view_name == 'CurrentUserView':
+                error_message = '获取用户信息失败：' + error_message
+            return self.get_response(None, error_message, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    响应示例:
-        {
-            "data": {
-                "user_id": "user123",
-                "name": "张三"，
-                "role": "管理员"
-            },
-            "message": "获取用户信息成功"
-        }
 
-    错误响应:
-        401 Unauthorized - 未提供有效的 access_token 或 token 已过期
-    """
-
+class CurrentUserView(BaseAPIView):
+    """获取当前用户信息接口"""
     permission_classes = [IsAuthenticated]
     serializer_class = CurrentUserSerializer
 
-    def handle_exception(self, exc):
-        """处理认证异常"""
-        if hasattr(exc, 'status_code') and exc.status_code == status.HTTP_401_UNAUTHORIZED:
-            return Response(
-                {
-                    "data": None,
-                    "message": "未提供有效的访问令牌或令牌已过期"
-                },
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        return super().handle_exception(exc)
-
     def get(self, request):
-        try:
-            # 序列化用户数据
-            serializer = self.serializer_class(request.user)
-            # 打印响应体
-            logger.info("current_user请求响应: {%s}" % serializer.data)
-            # 返回响应体
-            return Response(
-                {
-                    "data": serializer.data,
-                    "message": "获取用户信息成功"
-                },
-                status=status.HTTP_200_OK
-            )
-        except Exception as e:
-            logger.info("current_user请求响应: {%s}" % e.detail)
-            # 设置默认错误消息
-            error_message = "获取用户信息失败"
-            return Response(
-                {
-                    "data": None,
-                    "message": error_message
-                },
-                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
-            )
-        
+        # 序列化用户数据
+        serializer = self.serializer_class(request.user)
+        # 打印响应体
+        logger.info("current_user请求响应: {%s}" % serializer.data)
+        # 返回响应体
+        return self.get_response(serializer.data, "获取用户信息成功")
+
 # 自定义的刷新视图
-class CustomTokenRefreshView(TokenRefreshView):
-    """
-    刷新 access_token 的接口
-
-    请求方式: POST
-    请求头:
-        Content-Type: application/json
-
-    请求体:
-        {
-            "refresh": "用户的 refresh_token"
-        }
-
-    响应示例:
-        {
-            "data": {
-                "access": "eyJhbGciOiJIU...",
-                "user_id": "admin...",
-                "role": "管理员",
-                "name": "jack"
-            },
-            "message": "刷新令牌成功"
-        }
-
-    错误响应:
-        400 Bad Request - 请求参数错误
-        401 Unauthorized - refresh_token 无效或已过期
-        500 Internal Server Error - 服务器内部错误
-    """
-
+class CustomTokenRefreshView(TokenRefreshView, BaseAPIView):
+    """刷新token接口"""
     serializer_class = CustomTokenRefreshPairSerializer
 
     def post(self, request, *args, **kwargs):
-        try:
-            # 获取请求体
-            logger.info("refresh请求: {%s}" % request.data)
-            # 调用父类方法
-            response = super().post(request, *args, **kwargs)
-            # 打印响应体
-            logger.info("refresh请求响应: {%s}" % response.data)
-            # 返回响应体
-            return Response(
-                {
-                    "data": response.data,
-                    "message": "刷新令牌成功"
-                },
-                status=response.status_code
-            )
-        except Exception as e:
-            logger.info("refresh请求响应: {%s}" % e)
-            # 令牌无效的异常
-            if hasattr(e, 'status_code') and e.status_code == status.HTTP_401_UNAUTHORIZED:
-                error_message = "刷新令牌失败"
-                if hasattr(e, 'detail') and isinstance(e.detail, dict):
-                    error_message = '无效的刷新令牌'
-                else:
-                    error_message = str(e.detail)
-                return Response(
-                    {
-                        "data": None,
-                        "message": error_message
-                    },
-                    status=e.status_code
-                )
-            # 令牌为空的异常
-            if hasattr(e, 'status_code') and e.status_code == status.HTTP_400_BAD_REQUEST:
-                error_message = "刷新令牌失败"
-                if hasattr(e, 'detail'):
-                    if isinstance(e.detail, dict) and 'refresh' in e.detail:
-                        error_message = '刷新令牌不能为空'
-                    else:
-                        error_message = str(e.detail)
-                return Response(
-                    {
-                        "data": None,
-                        "message": error_message
-                    },
-                    status=e.status_code
-                )
-            return Response(
-                {
-                    "data": None,
-                    "message": str(e) if str(e) else "刷新令牌失败"
-                },
-                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
-            )
+        # 获取请求体
+        logger.info("refresh请求: {%s}" % request.data)
+        # 调用父类方法
+        response = super().post(request, *args, **kwargs)
+        # 打印响应体
+        logger.info("refresh请求响应: {%s}" % response.data)
+        # 返回响应体
+        return self.get_response(response.data, "刷新令牌成功")
 
 # 用户登录接口
-class LoginView(TokenObtainPairView):
-    """
-    用户登录接口
-
-    请求方式: POST
-    请求头:
-        Content-Type: application/json
-
-    请求体:
-        {
-            "email": "user@example.com",
-            "password": "password"
-        }
-
-    响应示例:
-        {
-            "data": {
-                "refresh": "eyJhbGciOiJIUz...",
-                "access": "eyJhbGciOiJIU...",
-                "user_id": "admin...",
-                "role": "管理员",
-                "name": "jack"
-            },
-            "message": "登录成功"
-        }
-
-    错误响应:
-        401 Unauthorized - 邮箱或密码错误
-        400 Bad Request - 请提供邮箱和密码
-    """
-
+class LoginView(TokenObtainPairView, BaseAPIView):
+    """用户登录接口"""
     logger = logging.getLogger(__name__)
     serializer_class = CustomTokenObtainPairSerializer
 
     def post(self, request, *args, **kwargs):
-        try:
-            # 获取请求体    
-            logger.info("login请求: {%s}" % request.data)
-            # 调用父类方法
-            response = super().post(request, *args, **kwargs)
-            # 打印响应体
-            logger.info("login请求响应: {%s}" % response.data)
-            return Response(
-                {
-                    "data": response.data,
-                    "message": "登录成功"
-                },
-                status=status.HTTP_200_OK
-            )
-        except Exception as e:
-            # 处理认证失败的情况
-            if hasattr(e, 'status_code') and e.status_code == status.HTTP_401_UNAUTHORIZED:
-                return Response(
-                    {
-                        "data": None,
-                        "message": str(e.detail) if hasattr(e, 'detail') else "用户名或密码错误"
-                    },
-                    status=e.status_code
-                )
-            # 处理请求体缺少邮箱或密码的情况
-            if hasattr(e, 'status_code') and e.status_code == status.HTTP_400_BAD_REQUEST:
-                error_message = "请提供邮箱和密码"
-                if hasattr(e, 'detail'):
-                    if isinstance(e.detail, dict):
-                        if 'email' in e.detail and 'password' in e.detail:
-                            error_message = "邮箱和密码不能为空"
-                        elif 'email' in e.detail:
-                            error_message = "邮箱不能为空"
-                        elif 'password' in e.detail:
-                            error_message = "密码不能为空"
-                return Response(
-                    {
-                        "data": None,
-                        "message": error_message
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            # 处理其他异常
-            return Response(
-                {
-                    "data": None,
-                    "message": str(e) if str(e) else "登录失败"
-                },
-                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
-            )
+        # 获取请求体    
+        logger.info("login请求: {%s}" % request.data)
+        # 调用父类方法
+        response = super().post(request, *args, **kwargs)
+        # 打印响应体
+        logger.info("login请求响应: {%s}" % response.data)
+        # 返回响应体
+        return self.get_response(response.data, "登录成功")
+
+class RegisterView(BaseAPIView):
+    """用户注册接口"""
+    permission_classes = [RegisterPermission]  # 添加权限检查
+    serializer_class = UserRegisterSerializer
+
+    def post(self, request):
+        """处理注册请求"""
+        # 获取请求体
+        logger.info("register请求: {%s}" % request.data)
+        # 验证数据
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        # 创建用户
+        user = serializer.save()
+        # 打印响应体
+        logger.info("register请求响应: {%s}" % serializer.data)
+        # 返回响应体
+        return self.get_response(serializer.data, "注册成功", status.HTTP_201_CREATED)

@@ -8,7 +8,8 @@ import SearchMenu from "@@/components/SearchMenu/index.vue"
 import ThemeSwitch from "@@/components/ThemeSwitch/index.vue"
 import { useDevice } from "@@/composables/useDevice"
 import { useLayoutMode } from "@@/composables/useLayoutMode"
-import { UserFilled } from "@element-plus/icons-vue"
+import { ArrowDown, UserFilled } from "@element-plus/icons-vue"
+import { useRouter } from "vue-router"
 import { Breadcrumb, Hamburger, Sidebar } from "../index"
 
 const { isMobile } = useDevice()
@@ -24,10 +25,19 @@ function toggleSidebar() {
   appStore.toggleSidebar(false)
 }
 
-/** 登出 */
+/** 跳转到登录页 */
+function goToLogin() {
+  router.push("/login")
+}
+
+/** 跳转到注册页 */
+function goToRegister() {
+  router.push("/register")
+}
+
+/** 退出登录 */
 function logout() {
   userStore.logout()
-  router.push("/login")
 }
 </script>
 
@@ -42,30 +52,42 @@ function logout() {
     <Breadcrumb v-if="!isTop || isMobile" class="breadcrumb" />
     <Sidebar v-if="isTop && !isMobile" class="sidebar" />
     <div class="right-menu">
-      <SearchMenu v-if="showSearchMenu" class="right-menu-item" />
+      <SearchMenu v-if="showSearchMenu && userStore.access_token" class="right-menu-item" />
       <Screenfull v-if="showScreenfull" class="right-menu-item" />
       <ThemeSwitch v-if="showThemeSwitch" class="right-menu-item" />
-      <Notify v-if="showNotify" class="right-menu-item" />
+      <Notify v-if="showNotify && userStore.access_token" class="right-menu-item" />
       <!-- 用户下拉菜单 -->
-      <el-dropdown>
+      <el-dropdown v-if="userStore.access_token">
         <div class="right-menu-item user">
           <el-avatar :icon="UserFilled" :size="30" />
           <span>{{ userStore.username }}</span>
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <a target="_blank" href="https://github.com/un-pany/v3-admin-vite">
-              <el-dropdown-item>GitHub</el-dropdown-item>
-            </a>
-            <a target="_blank" href="https://gitee.com/un-pany/v3-admin-vite">
-              <el-dropdown-item>Gitee</el-dropdown-item>
-            </a>
-            <el-dropdown-item divided @click="logout">
+            <el-dropdown-item @click="logout">
               退出登录
             </el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
+      <div v-else class="right-menu-item user">
+        <el-dropdown>
+          <div class="user-info">
+            <span>未登录</span>
+            <el-icon><ArrowDown /></el-icon>
+          </div>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="goToLogin">
+                登录
+              </el-dropdown-item>
+              <el-dropdown-item @click="goToRegister">
+                注册
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
     </div>
   </div>
 </template>
@@ -124,8 +146,14 @@ function logout() {
       .el-avatar {
         margin-right: 10px;
       }
-      span {
-        font-size: 16px;
+      .user-info {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        span {
+          font-size: 16px;
+          margin-right: 5px;
+        }
       }
     }
   }
