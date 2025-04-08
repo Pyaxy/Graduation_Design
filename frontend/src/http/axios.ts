@@ -112,16 +112,13 @@ function createInstance() {
       const status = get(error, "response.status")
       // 从响应中获取后端返回的错误消息
       const backendMessage = get(error, "response.data.message")
-
       // 处理 401 错误，尝试刷新 token
       if (status === 401
         && !originalRequest.url?.includes("/accounts/login")
-        && !originalRequest.url?.includes("/accounts/user/")
         && !originalRequest._retry) {
         // 设置 _retry 为 true，防止重复刷新 token
         originalRequest._retry = true
         try {
-          // 刷新 token
           await refreshAccessToken()
           // 重试原始请求
           addTokenToHeader(originalRequest)
