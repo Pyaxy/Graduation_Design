@@ -3,6 +3,8 @@ frontend/.vscode/
 # 前端自动个生成的文件
 frontend/types/auto/auto-imports.d.ts
 frontend/types/auto/components.d.ts
+frontend.old
+.vscode
 # Mac file
 .DS_Store
 # env

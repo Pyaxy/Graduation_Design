@@ -1,4 +1,0 @@
-Django==5.1.7
-psycopg2-binary>=2.9.7  # PostgreSQL 驱动
-python-dotenv>=1.0
-
