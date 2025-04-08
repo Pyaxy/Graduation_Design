@@ -1,3 +1,4 @@
+backend/media/
 frontend/node_modules/
 frontend/.vscode/
 # 前端自动个生成的文件

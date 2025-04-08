@@ -19,6 +19,15 @@ class IsAdmin(permissions.BasePermission):
         )
 
 
+class IsTeacherOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and (
+            request.user.role == "TEACHER" or
+            request.user.role == "ADMIN" or
+            request.user.is_staff
+        )
+
+
 class RegisterPermission(permissions.BasePermission):
     """
     注册权限类

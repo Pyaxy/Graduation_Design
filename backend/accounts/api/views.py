@@ -174,7 +174,7 @@ class LoginView(TokenObtainPairView, BaseAPIView):
         # 调用父类方法
         response = super().post(request, *args, **kwargs)
         # 打印响应体
-        logger.info("login请求响应: {%s}" % response.data)
+        logger.info("login请求响应状态码: {%s}" % response.status_code)
         # 返回响应体
         return self.get_response(response.data, "登录成功")
 
