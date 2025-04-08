@@ -110,7 +110,8 @@ function createInstance() {
       const originalRequest = get(error, "config")
       // status 是 HTTP 状态码
       const status = get(error, "response.status")
-      const message = get(error, "response.data.message")
+      // 从响应中获取后端返回的错误消息
+      const backendMessage = get(error, "response.data.message")
 
       // 处理 401 错误，尝试刷新 token
       if (status === 401
@@ -132,39 +133,46 @@ function createInstance() {
         }
       }
 
-      // 处理其他 HTTP 错误
-      switch (status) {
-        case 400:
-          error.message = "请求错误"
-          break
-        case 403:
-          error.message = message || "拒绝访问"
-          break
-        case 404:
-          error.message = "请求地址出错"
-          break
-        case 408:
-          error.message = "请求超时"
-          break
-        case 500:
-          error.message = "服务器内部错误"
-          break
-        case 501:
-          error.message = "服务未实现"
-          break
-        case 502:
-          error.message = "网关错误"
-          break
-        case 503:
-          error.message = "服务不可用"
-          break
-        case 504:
-          error.message = "网关超时"
-          break
-        case 505:
-          error.message = "HTTP 版本不受支持"
-          break
+      // 如果后端有返回错误信息，使用后端的错误信息
+      if (backendMessage) {
+        error.message = backendMessage
+      } else {
+        // 处理其他 HTTP 错误
+        switch (status) {
+          case 400:
+            error.message = "请求错误"
+            break
+          case 403:
+            error.message = "拒绝访问"
+            break
+          case 404:
+            error.message = "请求地址出错"
+            break
+          case 408:
+            error.message = "请求超时"
+            break
+          case 500:
+            error.message = "服务器内部错误"
+            break
+          case 501:
+            error.message = "服务未实现"
+            break
+          case 502:
+            error.message = "网关错误"
+            break
+          case 503:
+            error.message = "服务不可用"
+            break
+          case 504:
+            error.message = "网关超时"
+            break
+          case 505:
+            error.message = "HTTP 版本不受支持"
+            break
+        }
       }
+
+      // 显示错误消息
       ElMessage.error(error.message)
       return Promise.reject(error)
     }

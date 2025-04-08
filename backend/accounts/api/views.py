@@ -195,4 +195,4 @@ class RegisterView(BaseAPIView):
         # 打印响应体
         logger.info("register请求响应: {%s}" % serializer.data)
         # 返回响应体
-        return self.get_response(serializer.data, "注册成功", status.HTTP_201_CREATED)
+        return self.get_response(None, "注册成功", status.HTTP_201_CREATED)

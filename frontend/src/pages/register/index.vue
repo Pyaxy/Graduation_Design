@@ -1,12 +1,11 @@
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from "element-plus"
-import { useUserStore } from "@/pinia/stores/user"
 import { ElMessage } from "element-plus"
 import { ref } from "vue"
 import { useRouter } from "vue-router"
+import { registerApi } from "./apis"
 
 const router = useRouter()
-const userStore = useUserStore()
 const registerFormRef = ref<FormInstance>()
 
 const registerForm = ref({
@@ -60,17 +59,20 @@ async function handleRegister() {
   await registerFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        await userStore.register({
+        await registerApi({
           email: registerForm.value.email,
           password: registerForm.value.password,
+          confirm_password: registerForm.value.confirmPassword,
           user_id: registerForm.value.user_id,
           name: registerForm.value.name,
-          school: registerForm.value.school
+          school: registerForm.value.school,
+          role: "STUDENT"
         })
         ElMessage.success("注册成功")
         router.push("/login")
       } catch (error: any) {
-        ElMessage.error(error.message || "注册失败")
+        // 错误消息已在axios拦截器中处理，不需要再次显示
+        console.error("注册失败:", error)
       }
     }
   })
