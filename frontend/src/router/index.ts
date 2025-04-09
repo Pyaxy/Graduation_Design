@@ -263,9 +263,47 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         }
       }
     ]
+  },
+  {
+    path: "/code_week",
+    component: Layouts,
+    name: "CodeWeek",
+    meta: {
+      title: "程序设计课",
+      roles: ["TEACHER", "ADMIN", "STUDENT"]
+    },
+    children: [
+      {
+        path: "subject",
+        component: () => import("@/pages/subject/index.vue"),
+        name: "Subject-Manage",
+        meta: {
+          title: "课题列表",
+          roles: ["TEACHER", "ADMIN", "STUDENT"]
+        }
+      },
+      {
+        path: "subject-detail",
+        component: () => import("@/pages/demo/element-plus/index.vue"),
+        name: "Subject-Detail",
+        meta: {
+          title: "课题详情",
+          roles: ["TEACHER", "ADMIN", "STUDENT"]
+        }
+      },
+      {
+        path: "subject-detail/:id",
+        component: () => import("@/pages/subject/detail.vue"),
+        name: "Subject-Detail",
+        meta: {
+          title: "课题详情",
+          roles: ["TEACHER", "ADMIN", "STUDENT"],
+          hidden: true
+        }
+      }
+    ]
   }
 ]
-
 /** 路由实例 */
 export const router = createRouter({
   history: routerConfig.history,

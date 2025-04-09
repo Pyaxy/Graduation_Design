@@ -112,16 +112,13 @@ function createInstance() {
       const status = get(error, "response.status")
       // 从响应中获取后端返回的错误消息
       const backendMessage = get(error, "response.data.message")
-
       // 处理 401 错误，尝试刷新 token
       if (status === 401
         && !originalRequest.url?.includes("/accounts/login")
-        && !originalRequest.url?.includes("/accounts/user/")
         && !originalRequest._retry) {
         // 设置 _retry 为 true，防止重复刷新 token
         originalRequest._retry = true
         try {
-          // 刷新 token
           await refreshAccessToken()
           // 重试原始请求
           addTokenToHeader(originalRequest)
@@ -194,14 +191,15 @@ function createRequest(instance: AxiosInstance) {
       baseURL: import.meta.env.VITE_BASE_URL,
       // 请求头
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
       },
       // 请求体
       data: {},
       // 请求超时
       timeout: 5000,
       // 跨域请求时是否携带 Cookies
-      withCredentials: false
+      withCredentials: true
     }
     // 将默认配置 defaultConfig 和传入的自定义配置 config 进行合并成为 mergeConfig
     const mergeConfig = merge(defaultConfig, config)

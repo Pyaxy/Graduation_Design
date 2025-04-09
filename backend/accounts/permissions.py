@@ -19,6 +19,15 @@ class IsAdmin(permissions.BasePermission):
         )
 
 
+class IsTeacherOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and (
+            request.user.role == "TEACHER" or
+            request.user.role == "ADMIN" or
+            request.user.is_staff
+        )
+
+
 class RegisterPermission(permissions.BasePermission):
     """
     注册权限类
@@ -45,3 +54,27 @@ class RegisterPermission(permissions.BasePermission):
         
         # STUDENT角色可以直接注册
         return True
+
+
+class CanDeleteSubject(permissions.BasePermission):
+    """检查用户是否可以删除课题"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以删除任何课题
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师只能删除自己创建的课题
+        if request.user.role == 'TEACHER':
+            return obj.creator == request.user
+        return False
+
+
+class CanUpdateSubject(permissions.BasePermission):
+    """检查用户是否可以更新课题"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以更新任何课题
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师只能更新自己创建的课题
+        if request.user.role == 'TEACHER':
+            return obj.creator == request.user
+        return False

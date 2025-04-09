@@ -32,7 +32,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data.update(
             {
                 "user_id": self.user.user_id,
-                "role": self.user.get_role_display(),
+                "role": self.user.role,
                 "name": self.user.name,
             }
         )
