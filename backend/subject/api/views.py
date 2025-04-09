@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
-from accounts.permissions import IsTeacherOrAdmin, IsTeacher, IsAdmin
+from accounts.permissions import IsTeacherOrAdmin, IsTeacher, IsAdmin, CanDeleteSubject
 from subject.models import Subject
 from subject.api.serializers import (
     SubjectSerializer, SubjectCreateSerializer, SubjectReviewSerializer
@@ -38,8 +38,10 @@ class SubjectViewSet(viewsets.ModelViewSet):
         """根据不同的操作设置不同的权限"""
         if self.action == 'create':
             permission_classes = [IsTeacherOrAdmin]
-        elif self.action in ['update', 'partial_update', 'destroy']:
+        elif self.action in ['update', 'partial_update']:
             permission_classes = [IsTeacherOrAdmin]
+        elif self.action == 'destroy':
+            permission_classes = [IsAuthenticated, CanDeleteSubject]
         elif self.action == 'review':
             permission_classes = [IsAdmin]
         else:

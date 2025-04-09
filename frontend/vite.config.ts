@@ -42,7 +42,11 @@ export default defineConfig(({ mode }) => {
           // 是否为 WebSocket
           ws: false,
           // 是否允许跨域
-          changeOrigin: true
+          changeOrigin: true,
+          // 重写路径
+          rewrite: path => path,
+          // 配置代理超时时间
+          timeout: 5000
         }
       },
       // 是否允许跨域

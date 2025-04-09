@@ -290,6 +290,15 @@ export const dynamicRoutes: RouteRecordRaw[] = [
           title: "课题详情",
           roles: ["TEACHER", "ADMIN"]
         }
+      },
+      {
+        path: "subject-student",
+        component: () => import("@/pages/subject/index-student.vue"),
+        name: "Subject-Student",
+        meta: {
+          title: "课题管理",
+          roles: ["STUDENT"]
+        }
       }
     ]
   }

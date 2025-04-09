@@ -5,6 +5,7 @@ import { usePagination } from "@@/composables/usePagination"
 import { CirclePlus, Delete, Download, Refresh, RefreshRight, Search } from "@element-plus/icons-vue"
 import { cloneDeep } from "lodash-es"
 import { createSubjectApi, deleteSubject, getSubjectList, reviewSubject, updateSubject } from "./apis"
+import { useRouter } from "vue-router"
 
 defineOptions({
   name: "Subject"
@@ -12,6 +13,7 @@ defineOptions({
 
 const loading = ref<boolean>(false)
 const { paginationData, handleCurrentChange, handleSizeChange } = usePagination()
+const router = useRouter()
 
 // #region 增
 const DEFAULT_FORM_DATA: CreateOrUpdateSubjectRequestData = {

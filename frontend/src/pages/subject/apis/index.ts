@@ -11,7 +11,7 @@ export function getSubjectList(params: { page?: number, page_size?: number }) {
 
 export function getSubjectDetail(id: number) {
   return request<SubjectDetailResponse>({
-    url: `/api/v1/subjects/${id}/`,
+    url: `/subjects/${id}/`,
     method: "get"
   })
 }

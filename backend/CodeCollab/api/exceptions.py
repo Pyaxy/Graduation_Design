@@ -4,21 +4,21 @@ from rest_framework import status
 from functools import wraps
 
 # 用于存储需要标准化异常处理的视图
-standardized_views = set()
+# standardized_views = set()
 
-def standardize_exceptions(view_func):
-    """
-    装饰器：标记需要标准化异常处理的视图
-    """
-    @wraps(view_func)
-    def wrapper(*args, **kwargs):
-        print("-----装饰器开始-----")
-        # 将视图函数添加到标准化视图集合中
-        standardized_views.add(view_func)
-        print(standardized_views)
-        print("-----装饰器结束-----")
-        return view_func(*args, **kwargs)
-    return wrapper
+# def standardize_exceptions(view_func):
+#     """
+#     装饰器：标记需要标准化异常处理的视图
+#     """
+#     @wraps(view_func)
+#     def wrapper(*args, **kwargs):
+#         print("-----装饰器开始-----")
+#         # 将视图函数添加到标准化视图集合中
+#         standardized_views.add(view_func)
+#         print(standardized_views)
+#         print("-----装饰器结束-----")
+#         return view_func(*args, **kwargs)
+#     return wrapper
 
 def custom_exception_handler(exc, context):
     """
@@ -41,7 +41,7 @@ def custom_exception_handler(exc, context):
         print(f"视图: {view}")
         view_func = getattr(view, 'action', None)
         print(f"视图函数: {view_func}")
-        print(f"标准化视图集合: {standardized_views}")
+        # print(f"标准化视图集合: {standardized_views}")
 
         # 将错误响应转换为标准格式
         response.data = {

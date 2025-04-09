@@ -1,5 +1,6 @@
 from django.db import models
 from accounts.models import User
+from .validators import validate_pdf_file, validate_file_size
 
 # Create your models here.
 
@@ -16,7 +17,13 @@ class Subject(models.Model):
 
     title = models.CharField(max_length=100, verbose_name="课题标题")
     description = models.TextField(verbose_name="课题描述")
-    description_file = models.FileField(upload_to='subject_files/', verbose_name="课题原始描述文件", blank=True, null=True)
+    description_file = models.FileField(
+        upload_to='subject_files/', 
+        verbose_name="课题原始描述文件", 
+        blank=True, 
+        null=True,
+        validators=[validate_pdf_file, validate_file_size]
+    )
     creator = models.ForeignKey(
         User, 
         on_delete=models.CASCADE,
@@ -51,3 +58,11 @@ class Subject(models.Model):
 
     def __str__(self):
         return self.title
+
+    def delete(self, *args, **kwargs):
+        """删除对象时同时删除关联的文件"""
+        if self.description_file:
+            # 删除文件
+            self.description_file.delete(save=False)
+        # 调用父类的delete方法
+        super().delete(*args, **kwargs)

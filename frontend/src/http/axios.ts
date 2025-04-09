@@ -191,14 +191,15 @@ function createRequest(instance: AxiosInstance) {
       baseURL: import.meta.env.VITE_BASE_URL,
       // 请求头
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
       },
       // 请求体
       data: {},
       // 请求超时
       timeout: 5000,
       // 跨域请求时是否携带 Cookies
-      withCredentials: false
+      withCredentials: true
     }
     // 将默认配置 defaultConfig 和传入的自定义配置 config 进行合并成为 mergeConfig
     const mergeConfig = merge(defaultConfig, config)

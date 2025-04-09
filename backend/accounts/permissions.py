@@ -54,3 +54,15 @@ class RegisterPermission(permissions.BasePermission):
         
         # STUDENT角色可以直接注册
         return True
+
+
+class CanDeleteSubject(permissions.BasePermission):
+    """检查用户是否可以删除课题"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以删除任何课题
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师只能删除自己创建的课题
+        if request.user.role == 'TEACHER':
+            return obj.creator == request.user
+        return False

@@ -52,6 +52,10 @@ def standard_response(success_message=None):
                 data = response
                 status_code = status.HTTP_200_OK
                 headers = {}
+            
+            # 如果是 204 状态码，直接返回空响应
+            if status_code == status.HTTP_204_NO_CONTENT:
+                return Response(status=status.HTTP_204_NO_CONTENT)
                 
             # 创建标准响应
             standardized_response = Response(
