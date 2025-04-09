@@ -65,6 +65,14 @@ class SubjectReviewSerializer(serializers.ModelSerializer):
         model = Subject
         fields = ['status', 'review_comments']
         
+    def validate(self, attrs):
+        """验证所有字段"""
+        if attrs.get('status') == "":
+            raise serializers.ValidationError({"status": "课题状态不能为空"})
+        if attrs.get('status') not in [choice[0] for choice in Subject.STATUS_CHOICES]:
+            raise serializers.ValidationError({"status": "无效的课题状态"})
+        return attrs
+        
     def update(self, instance, validated_data):
         # 获取当前用户作为审核人
         user = self.context['request'].user

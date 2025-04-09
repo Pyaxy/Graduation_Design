@@ -1,19 +1,30 @@
 <script lang="ts" setup>
 import type { FormInstance, FormRules, UploadFile } from "element-plus"
 import type { CreateOrUpdateSubjectRequestData, SubjectData } from "./apis/type"
+import { useUserStore } from "@/pinia/stores/user"
 import { usePagination } from "@@/composables/usePagination"
 import { CirclePlus, Delete, Download, Refresh, RefreshRight, Search } from "@element-plus/icons-vue"
 import { cloneDeep } from "lodash-es"
-import { createSubjectApi, deleteSubject, getSubjectList, reviewSubject, updateSubject } from "./apis"
+import { storeToRefs } from "pinia"
 import { useRouter } from "vue-router"
+import { createSubjectApi, deleteSubject, getSubjectList, reviewSubject, updateSubject } from "./apis"
 
 defineOptions({
   name: "Subject"
 })
+const userStore = useUserStore()
+const { role: userRole } = storeToRefs(userStore)
 
 const loading = ref<boolean>(false)
 const { paginationData, handleCurrentChange, handleSizeChange } = usePagination()
+
+// #region 查看详情
 const router = useRouter()
+
+function handleViewDetail(row: SubjectData) {
+  router.push(`subject-detail/${row.id}`)
+}
+// #endregion
 
 // #region 增
 const DEFAULT_FORM_DATA: CreateOrUpdateSubjectRequestData = {
@@ -149,9 +160,9 @@ function resetSearch() {
 const reviewDialogVisible = ref<boolean>(false)
 const reviewFormRef = ref<FormInstance | null>(null)
 const reviewData = reactive({
-  id: 0,
-  status: "APPROVED",
-  review_comments: ""
+  id: 0 as number,
+  status: "APPROVED" as "APPROVED" | "REJECTED",
+  review_comments: "" as string
 })
 
 function handleReview(row: SubjectData) {
@@ -184,6 +195,9 @@ function submitReview() {
 
 // 监听分页参数的变化
 watch([() => paginationData.currentPage, () => paginationData.pageSize], getSubjectData, { immediate: true })
+onMounted(() => {
+  console.log(userRole.value)
+})
 </script>
 
 <template>
@@ -248,13 +262,16 @@ watch([() => paginationData.currentPage, () => paginationData.pageSize], getSubj
           <el-table-column prop="created_at" label="创建时间" align="center" />
           <el-table-column fixed="right" label="操作" width="250" align="center">
             <template #default="scope">
-              <el-button type="primary" text bg size="small" @click="handleUpdate(scope.row)">
+              <el-button type="primary" text bg size="small" @click="handleViewDetail(scope.row)">
+                查看
+              </el-button>
+              <el-button v-if="['ADMIN', 'TEACHER'].includes(userRole)" type="primary" text bg size="small" @click="handleUpdate(scope.row)">
                 修改
               </el-button>
-              <el-button type="success" text bg size="small" @click="handleReview(scope.row)">
+              <el-button v-if="userRole === 'ADMIN'" type="success" text bg size="small" @click="handleReview(scope.row)">
                 审核
               </el-button>
-              <el-button type="danger" text bg size="small" @click="handleDelete(scope.row)">
+              <el-button v-if="['ADMIN', 'TEACHER'].includes(userRole)" type="danger" text bg size="small" @click="handleDelete(scope.row)">
                 删除
               </el-button>
             </template>

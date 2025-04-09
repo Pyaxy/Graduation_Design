@@ -42,8 +42,6 @@ class SubjectViewSet(viewsets.ModelViewSet):
             permission_classes = [IsAuthenticated, CanUpdateSubject]
         elif self.action == 'destroy':
             permission_classes = [IsAuthenticated, CanDeleteSubject]
-        elif self.action == 'review':
-            permission_classes = [IsAdmin]
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
@@ -95,7 +93,13 @@ class SubjectViewSet(viewsets.ModelViewSet):
     
     @standard_response("更新成功")
     def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
+        # 设置状态为 PENDING
+        serializer.validated_data['status'] = 'PENDING'
+        self.perform_update(serializer)
+        return Response(serializer.data)
     
     @standard_response("更新成功")
     def partial_update(self, request, *args, **kwargs):
@@ -106,11 +110,16 @@ class SubjectViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'], url_path='review')
-    @standard_response("审核成功")
+    @standard_response("审核操作成功")
     def review(self, request, pk=None):
         """审核课题"""
         subject = self.get_object()
+        
+        # 检查权限
+        if request.user.role != 'ADMIN':
+            return Response({"message": "只有管理员可以审核课题"}, status=status.HTTP_403_FORBIDDEN)
+            
         serializer = self.get_serializer(subject, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return serializer.data 
+        return serializer.data

@@ -129,8 +129,58 @@ class SubjectUpdateTestCase(APITestCase):
         self.assertEqual(subject.title, "updated_title")
         self.assertEqual(subject.description, "updated_description")
         self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.status, "PENDING")
         # 更新时间是否变化
         self.assertNotEqual(subject.updated_at, before_update_time)
+
+    def test_update_rejected_subject_with_valid_data(self):
+        """更新之后，课题状态变为PENDING"""
+        self.create_subjects(1, self.teacher, "REJECTED")
+        subject = Subject.objects.first()
+        before_update_time = subject.updated_at
+        update_data = {
+            "title": "updated_title",
+            "description": "updated_description",
+            "max_students": 10
+        }
+        response = self.client.put(
+            f"{self.url}{subject.id}/",
+            data=update_data,
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        subject.refresh_from_db()
+        self.assertEqual(subject.title, "updated_title")
+        self.assertEqual(subject.description, "updated_description")
+        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.status, "PENDING")
+        # 更新时间是否变化
+        self.assertNotEqual(subject.updated_at, before_update_time)
+
+    def test_update_approved_subject_with_valid_data(self):
+        """更新之后，课题状态变为PENDING"""
+        self.create_subjects(1, self.teacher, "APPROVED")
+        subject = Subject.objects.first()
+        before_update_time = subject.updated_at
+        update_data = {
+            "title": "updated_title",
+            "description": "updated_description",
+            "max_students": 10
+        }
+        response = self.client.put(
+            f"{self.url}{subject.id}/",
+            data=update_data,
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        subject.refresh_from_db()
+        self.assertEqual(subject.title, "updated_title")
+        self.assertEqual(subject.description, "updated_description")
+        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.status, "PENDING")
+        # 更新时间是否变化
+        self.assertNotEqual(subject.updated_at, before_update_time)
+    
     # endregion
 
     # region 必填字段测试

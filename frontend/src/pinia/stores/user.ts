@@ -46,12 +46,15 @@ export const useUserStore = defineStore("user", () => {
   }
 
   // 模拟角色变化
-  const changeRoles = (role: string) => {
-    const newToken = `token-${role}`
+  const changeRoles = (newRole: string) => {
+    const newToken = `token-${newRole}`
     access_token.value = newToken
     _setToken(newToken)
-    // 用刷新页面代替重新登录
-    location.reload()
+    // 使用 $patch 来确保响应式更新
+    useUserStore().$patch({
+      role: newRole,
+      roles: [newRole]
+    })
   }
 
   // 登出
@@ -68,8 +71,8 @@ export const useUserStore = defineStore("user", () => {
     resetRouter()
     // 重置标签页
     resetTagsView()
-    // 刷新页面
-    location.reload()
+    // 清除所有缓存
+    window.location.href = "/"
   }
 
   // 重置 Token

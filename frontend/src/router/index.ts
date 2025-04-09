@@ -278,8 +278,8 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         component: () => import("@/pages/subject/index.vue"),
         name: "Subject-Manage",
         meta: {
-          title: "课题管理",
-          roles: ["TEACHER", "ADMIN"]
+          title: "课题列表",
+          roles: ["TEACHER", "ADMIN", "STUDENT"]
         }
       },
       {
@@ -288,16 +288,17 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         name: "Subject-Detail",
         meta: {
           title: "课题详情",
-          roles: ["TEACHER", "ADMIN"]
+          roles: ["TEACHER", "ADMIN", "STUDENT"]
         }
       },
       {
-        path: "subject-student",
-        component: () => import("@/pages/subject/index-student.vue"),
-        name: "Subject-Student",
+        path: "subject-detail/:id",
+        component: () => import("@/pages/subject/detail.vue"),
+        name: "Subject-Detail",
         meta: {
-          title: "课题管理",
-          roles: ["STUDENT"]
+          title: "课题详情",
+          roles: ["TEACHER", "ADMIN", "STUDENT"],
+          hidden: true
         }
       }
     ]
