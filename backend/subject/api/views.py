@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
-from accounts.permissions import IsTeacherOrAdmin, IsTeacher, IsAdmin, CanDeleteSubject
+from accounts.permissions import IsTeacherOrAdmin, IsTeacher, IsAdmin, CanDeleteSubject, CanUpdateSubject
 from subject.models import Subject
 from subject.api.serializers import (
     SubjectSerializer, SubjectCreateSerializer, SubjectReviewSerializer
@@ -39,7 +39,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             permission_classes = [IsTeacherOrAdmin]
         elif self.action in ['update', 'partial_update']:
-            permission_classes = [IsTeacherOrAdmin]
+            permission_classes = [IsAuthenticated, CanUpdateSubject]
         elif self.action == 'destroy':
             permission_classes = [IsAuthenticated, CanDeleteSubject]
         elif self.action == 'review':

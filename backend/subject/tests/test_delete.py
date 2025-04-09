@@ -3,24 +3,25 @@ from rest_framework import status
 from subject.models import Subject
 from accounts.models import User
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
 import os
 
 '''
 1. 权限测试：
-   - 未登录用户尝试删除课题（应该被拒绝）
-   - 学生用户尝试删除课题（应该被拒绝）
-   - 教师用户尝试删除自己的课题（应该成功）
-   - 教师用户尝试删除其他教师的课题（应该被拒绝）
-   - 管理员用户尝试删除任何课题（应该成功）
+   [x] 未登录用户尝试删除课题（应该被拒绝）
+   [x] 学生用户尝试删除课题（应该被拒绝）
+   [x] 教师用户尝试删除自己的课题（应该成功）
+   [x] 教师用户尝试删除其他教师的课题（应该被拒绝）
+   [x] 管理员用户尝试删除任何课题（应该成功）
 
 2. 数据验证测试：
-   - 删除不存在的课题ID（应该返回404）
-   - 删除已删除的课题（应该返回404）
-   - 删除无效的课题ID格式（应该返回400）
+   [x] 删除不存在的课题ID（应该返回404）
+   [x] 删除已删除的课题（应该返回404）
+   [x] 删除无效的课题ID格式（应该返回400）
 
 3. 文件处理测试：
-   - 删除带文件的课题时，文件是否被正确删除
-   - 删除不带文件的课题时，是否能正常处理
+   [x] 删除带文件的课题时，文件是否被正确删除
+   [x] 删除不带文件的课题时，是否能正常处理
 
 4. 业务逻辑测试：
    - 删除课题后，数据库中的记录是否被正确删除
@@ -225,5 +226,42 @@ class SubjectDeleteTestCase(APITestCase):
     # endregion
 
     # region 文件处理测试
+    def test_delete_subject_with_file(self):
+        """删除带文件的课题"""
+        self.create_subjects(1, self.teacher, "APPROVED")
+        subject = Subject.objects.first()
+        subject.description_file = SimpleUploadedFile("test.txt", content=b"test", content_type="text/plain")
+        subject.save()
+        response = self.client.delete(
+            f"{self.url}{subject.id}/",
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(os.path.exists(subject.description_file.path))
+    
+    def test_delete_subject_without_file(self):
+        """删除不带文件的课题"""
+        self.create_subjects(1, self.teacher, "APPROVED")
+        subject = Subject.objects.first()
+        response = self.client.delete(
+            f"{self.url}{subject.id}/",
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+    # endregion
+
+    # region 相应测试
+    def test_delete_subject_success_response(self):
+        """删除成功时，返回的响应格式是否正确"""
+        self.create_subjects(1, self.teacher, "APPROVED")
+        subject = Subject.objects.first()
+        response = self.client.delete(
+            f"{self.url}{subject.id}/",
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.data, None)
+    # endregion
+
     
     

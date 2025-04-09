@@ -66,3 +66,15 @@ class CanDeleteSubject(permissions.BasePermission):
         if request.user.role == 'TEACHER':
             return obj.creator == request.user
         return False
+
+
+class CanUpdateSubject(permissions.BasePermission):
+    """检查用户是否可以更新课题"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以更新任何课题
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师只能更新自己创建的课题
+        if request.user.role == 'TEACHER':
+            return obj.creator == request.user
+        return False
