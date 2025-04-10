@@ -12,7 +12,7 @@ from subject.api.serializers import (
 from CodeCollab.api.decorators import standard_response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
-# from CodeCollab.api.exceptions import standardize_exceptions
+from rest_framework import serializers
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +94,14 @@ class SubjectViewSet(viewsets.ModelViewSet):
     @standard_response("更新成功")
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
+        if request.user.role != 'ADMIN':
+            # 非管理员只能更新课题的标题、描述、最大学生数和描述文件
+            allowed_fields = ['title', 'description', 'max_students', 'description_file']
+            # 检查请求数据中是否只包含允许的字段
+            for field in request.data.keys():
+                if field not in allowed_fields:
+                    raise serializers.ValidationError({f"{field}": "不允许更新字段"})
+
         serializer = self.get_serializer(instance, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
         # 设置状态为 PENDING

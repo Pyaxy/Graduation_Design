@@ -335,7 +335,7 @@ class SubjectUpdateTestCase(APITestCase):
     
     # region 权限测试
     def test_update_subject_without_token(self):
-        """更新课题时，未授权用户尝试更新"""
+        """更新课题时，未登录用户尝试更新"""
         self.create_subjects(1, self.teacher, "PENDING")
         subject = Subject.objects.first()
         update_data = {
@@ -417,6 +417,24 @@ class SubjectUpdateTestCase(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_update_teacher_update_subject_status(self):
+        """更新课题时，教师用户尝试更新课题状态"""
+        self.create_subjects(1, self.teacher, "PENDING")
+        subject = Subject.objects.first()
+        update_data = {
+            "title": "updated_title",
+            "description": "updated_description",
+            "max_students": 10,
+            "status": "APPROVED"
+        }
+        response = self.client.put(
+            f"{self.url}{subject.id}/",
+            data=update_data,
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("status", response.data["message"])
+    
     def test_update_subject_with_admin_update_subject(self):
         """更新课题时，管理员用户尝试更新课题"""
         self.create_subjects(1, self.teacher, "PENDING")

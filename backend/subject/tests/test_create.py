@@ -417,7 +417,45 @@ class SubjectCreateTestCase(APITestCase):
         self.assertEqual(subject.creator, self.teacher)
         self.assertEqual(subject.status, "PENDING")
         self.assertIsNotNone(subject.created_at)
-    
+
+    def test_create_approved_subject_with_teacher(self):
+        """测试教师创建已批准课题"""
+        data = {
+            "title": "test_title",
+            "description": "test_description",
+            "max_students": 10,
+            "status": "APPROVED"
+        }
+        response = self.client.post(
+            self.url,
+            data=data,
+            format='multipart',
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        # 是否返回400
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # 是否返回正确的错误信息
+        self.assertIn("课题状态不能为已批准", str(response.data["message"]))
+
+    def test_create_rejected_subject_with_teacher(self):
+        """测试教师创建已驳回课题"""
+        data = {
+            "title": "test_title",
+            "description": "test_description",
+            "max_students": 10,
+            "status": "REJECTED"
+        }
+        response = self.client.post(
+            self.url,
+            data=data,
+            format='multipart',
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        # 是否返回400
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # 是否返回正确的错误信息
+        self.assertIn("课题状态不能为已驳回", str(response.data["message"]))
+        
     def test_create_subject_with_admin(self):
         """测试管理员创建课题"""
         data = {

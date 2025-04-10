@@ -44,13 +44,21 @@ class SubjectSerializer(serializers.ModelSerializer):
 
 class SubjectCreateSerializer(serializers.ModelSerializer):
     """课题创建序列化器"""
-
+    status = serializers.ChoiceField(choices=Subject.STATUS_CHOICES, required=False, default="PENDING")
     class Meta:
         model = Subject
         fields = [
-            'title', 'description', 'description_file', 'max_students'
+            'title', 'description', 'description_file', 'max_students', 'status'
         ]
 
+    def validate(self, attrs):
+        """验证课题状态"""
+        if attrs.get('status') == "APPROVED":
+            raise serializers.ValidationError({"status": "课题状态不能为已批准"})
+        if attrs.get('status') == "REJECTED":
+            raise serializers.ValidationError({"status": "课题状态不能为已驳回"})
+        return attrs
+    
     def create(self, validated_data):
         # 获取当前用户作为创建者
         user = self.context['request'].user
