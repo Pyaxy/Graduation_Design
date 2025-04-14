@@ -14,6 +14,7 @@ from rest_framework.pagination import PageNumberPagination
 from accounts.permissions import IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse
 from CodeCollab.api.decorators import standard_response
 from ..serializers import CourseCreateSerializer
+from rest_framework import serializers
 # Create your views here.
 
 class CustomPagination(PageNumberPagination):
@@ -87,6 +88,8 @@ class CourseViewSet(viewsets.ModelViewSet):
     
     @standard_response("创建成功")
     def create(self, request, *args, **kwargs):
+        print("request.data:")
+        print(request.data)
         return super().create(request, *args, **kwargs)
     
     @standard_response("更新成功")

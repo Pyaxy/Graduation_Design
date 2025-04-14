@@ -194,27 +194,6 @@ export const constantRoutes: RouteRecordRaw[] = [
         }
       }
     ]
-  },
-  {
-    path: "/teacher",
-    component: Layouts,
-    redirect: "/teacher/create",
-    name: "Teacher",
-    meta: {
-      title: "教师管理",
-      elIcon: "User",
-      roles: ["ADMIN"]
-    },
-    children: [
-      {
-        path: "create",
-        component: () => import("@/pages/teacher/CreateTeacher.vue"),
-        name: "CreateTeacher",
-        meta: {
-          title: "创建教师账号"
-        }
-      }
-    ]
   }
 ]
 
@@ -305,11 +284,11 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         }
       },
       {
-        path: "subject-detail",
-        component: () => import("@/pages/demo/element-plus/index.vue"),
-        name: "Subject-Detail",
+        path: "course",
+        component: () => import("@/pages/course/index.vue"),
+        name: "Course-Manage",
         meta: {
-          title: "课题详情",
+          title: "课程列表",
           roles: ["TEACHER", "ADMIN", "STUDENT"]
         }
       },
@@ -321,6 +300,27 @@ export const dynamicRoutes: RouteRecordRaw[] = [
           title: "课题详情",
           roles: ["TEACHER", "ADMIN", "STUDENT"],
           hidden: true
+        }
+      }
+    ]
+  },
+  {
+    path: "/teacher",
+    component: Layouts,
+    redirect: "/teacher/create",
+    name: "Teacher",
+    meta: {
+      title: "教师管理",
+      elIcon: "User",
+      roles: ["ADMIN"]
+    },
+    children: [
+      {
+        path: "create",
+        component: () => import("@/pages/teacher/CreateTeacher.vue"),
+        name: "CreateTeacher",
+        meta: {
+          title: "创建教师账号"
         }
       }
     ]
