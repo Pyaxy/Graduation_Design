@@ -194,6 +194,27 @@ export const constantRoutes: RouteRecordRaw[] = [
         }
       }
     ]
+  },
+  {
+    path: "/teacher",
+    component: Layouts,
+    redirect: "/teacher/create",
+    name: "Teacher",
+    meta: {
+      title: "教师管理",
+      elIcon: "User",
+      roles: ["ADMIN"]
+    },
+    children: [
+      {
+        path: "create",
+        component: () => import("@/pages/teacher/CreateTeacher.vue"),
+        name: "CreateTeacher",
+        meta: {
+          title: "创建教师账号"
+        }
+      }
+    ]
   }
 ]
 
@@ -270,7 +291,8 @@ export const dynamicRoutes: RouteRecordRaw[] = [
     name: "CodeWeek",
     meta: {
       title: "程序设计课",
-      roles: ["TEACHER", "ADMIN", "STUDENT"]
+      roles: ["TEACHER", "ADMIN", "STUDENT"],
+      elIcon: "Coin"
     },
     children: [
       {
