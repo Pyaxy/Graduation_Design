@@ -25,6 +25,7 @@ urlpatterns = [
     path("polls/", include("polls.urls")),
     path("", include("accounts.urls")),
     path("", include("subject.urls")),
+    path("", include("course.urls")),
 ]
 
 # 在开发环境中提供媒体文件服务

@@ -78,3 +78,26 @@ class CanUpdateSubject(permissions.BasePermission):
         if request.user.role == 'TEACHER':
             return obj.creator == request.user
         return False
+    
+
+class CanDeleteCourse(permissions.BasePermission):
+    """检查用户是否可以删除课程"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以删除任何课程
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师只能删除自己创建的课程
+        if request.user.role == 'TEACHER':
+            return obj.teacher == request.user
+        return False
+    
+class CanUpdateCourse(permissions.BasePermission):
+    """检查用户是否可以更新课程"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以更新任何课程
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师只能更新自己创建的课程
+        if request.user.role == 'TEACHER':
+            return obj.teacher == request.user
+        return False
