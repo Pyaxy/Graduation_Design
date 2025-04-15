@@ -222,7 +222,7 @@ class CourseJoinTestCase(APITestCase):
     def test_join_course_with_completed_course(self):
         """测试加入已结束的课程"""
         print("-----正在测试加入已结束的课程-----")
-        self.create_courses(count=1, start_delta=1, end_delta=1)
+        self.create_courses(count=1, start_delta=-2, end_delta=-1)
         course_code = Course.objects.first().course_code
         response = self.client.post(
             f'{self.url}',

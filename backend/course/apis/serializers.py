@@ -22,6 +22,13 @@ class CourseSerializer(serializers.ModelSerializer):
                  'start_date', 'end_date']
         read_only_fields = ['id', 'course_code', 'status', 'created_at', 'updated_at', 'teacher']
 
+    def validate(self, data):
+        """验证开始时间不得比结束时间迟"""
+        if 'start_date' in data and 'end_date' in data:
+            if data['start_date'] > data['end_date']:
+                raise serializers.ValidationError("开始时间不得比结束时间迟")
+        return data
+
     def get_current_status(self, obj):
         """获取当前状态"""
         return obj.calculate_status()
@@ -46,6 +53,12 @@ class CourseCreateSerializer(serializers.ModelSerializer):
             'start_date': {'required': True},
             'end_date': {'required': True}
         }
+    
+    def validate(self, data):
+        """验证开始时间不得比结束时间迟"""
+        if data['start_date'] > data['end_date']:
+            raise serializers.ValidationError("开始时间不得比结束时间迟")
+        return data
 
     def create(self, validated_data):
         # 获取当前用户作为创建者
@@ -65,4 +78,18 @@ class JoinCourseSerializer(serializers.Serializer):
         '''验证课程码'''
         if not Course.objects.filter(course_code=value).exists():
             raise serializers.ValidationError("课程码不存在")
+        return value
+    
+class LeaveCourseSerializer(serializers.Serializer):
+    '''退出课程序列化器'''
+    student_user_id = serializers.CharField(required=True)
+    class Meta:
+        model = Course
+        fields = ['student_user_id']
+        read_only_fields = ['student_user_id']
+
+    def validate_student_user_id(self, value):
+        '''验证学生用户ID'''
+        if not User.objects.filter(user_id=value).exists():
+            raise serializers.ValidationError("学生用户ID不存在")
         return value

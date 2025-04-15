@@ -206,6 +206,25 @@ class CourseCreateTestCase(APITestCase):
         # 是否返回data
         self.assertIn("data", response.data)
         self.assertEqual(response.data["data"], None)
+
+    def test_create_course_with_start_date_after_end_date(self):
+        """测试开始时间晚于结束时间"""
+        data = {
+            "name": "test_name",
+            "description": "test_description",
+            "start_date": self.get_day(days=2),
+            "end_date": self.get_day(days=1)
+        }
+        response = self.client.post(
+            self.url,
+            data=data,
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        # 是否返回400
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # 是否返回message 
+        self.assertIn("message", response.data)
+        self.assertIn("开始时间不得比结束时间迟", response.data["message"])
     # endregion
 
     # region 权限测试

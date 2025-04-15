@@ -5,16 +5,18 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from ..models import Course
-from .serializers import CourseSerializer, JoinCourseSerializer
+from .serializers import CourseSerializer, JoinCourseSerializer, LeaveCourseSerializer
 import random
 import string
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
-from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse
+from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse, CanLeaveCourse
 from CodeCollab.api.decorators import standard_response
 from .serializers import CourseCreateSerializer
 from rest_framework.exceptions import ValidationError
+from accounts.models import User
+from django.http import Http404
 # Create your views here.
 
 class CustomPagination(PageNumberPagination):
@@ -44,18 +46,22 @@ class CourseViewSet(viewsets.ModelViewSet):
             permission_classes = [IsAuthenticated, CanUpdateCourse]
         elif self.action == 'destroy':
             permission_classes = [IsAuthenticated, CanDeleteCourse]
-        elif self.action == 'join':
+        elif self.action in ['join']:
             permission_classes = [IsStudent]
+        elif self.action in ['leave']:
+            permission_classes = [IsAuthenticated, CanLeaveCourse]
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
     
     def get_serializer_class(self):
+        """根据不同的操作设置不同的序列化器"""
         if self.action == 'create':
             return CourseCreateSerializer
         return super().get_serializer_class()
     
     def get_queryset(self):
+        """根据不同的操作设置不同的查询集"""
         user = self.request.user
         queryset = Course.objects.all()
 
@@ -116,11 +122,13 @@ class CourseViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     @standard_response("加入课程成功")
     def join(self, request):
+        # 验证请求参数
         serializer = JoinCourseSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         course_code = serializer.validated_data['course_code']
-        
+        # 获取课程
         course = get_object_or_404(Course, course_code=course_code)
+        # 验证用户是否已经加入课程
         if request.user in course.students.all():
             raise ValidationError("您已经加入该课程")
         # 更新课程状态
@@ -128,20 +136,43 @@ class CourseViewSet(viewsets.ModelViewSet):
         # 如果课程已结束，则无法加入
         if course.status == "completed":
             raise ValidationError("该课程已结束，无法加入")
-        
+        # 加入课程
         course.students.add(request.user)
+        # 保存课程
+        course.save()
         return Response(None, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     @standard_response("退出课程成功")
     def leave(self, request, pk=None):
-        course = self.get_object()
-        if request.user not in course.students.all():
-            raise ValidationError("您未加入该课程")
-        # 更新课程状态
-        course.calculate_status()
-        # 如果课程已结束，则无法退出
-        if course.status == "completed":
-            raise ValidationError("该课程已结束，无法退出")
-        course.students.remove(request.user)
+        try:
+            # 获取课程
+            course = self.get_object()
+        except Http404:
+            raise Http404("课程不存在")
+            
+        # 如果是学生退出自己的课程
+        if request.user.role == "STUDENT":
+            # 更新课程状态
+            course.calculate_status()
+            # 如果课程已结束，则无法退出
+            if course.status == "completed":
+                raise ValidationError("该课程已结束，无法退出")
+            # 退出课程
+            course.students.remove(request.user)
+            # 保存课程
+            course.save()
+        else:
+            # 验证请求参数
+            serializer = LeaveCourseSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            student_user_id = serializer.validated_data['student_user_id']
+            student_user = get_object_or_404(User, user_id=student_user_id)
+            # 验证用户是否已经加入课程
+            if student_user not in course.students.all():
+                raise ValidationError("该学生未加入该课程")
+            # 退出课程
+            course.students.remove(student_user)
+            # 保存课程
+            course.save()
         return Response(None, status=status.HTTP_200_OK)

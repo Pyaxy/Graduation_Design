@@ -101,3 +101,17 @@ class CanUpdateCourse(permissions.BasePermission):
         if request.user.role == 'TEACHER':
             return obj.teacher == request.user
         return False
+
+class CanLeaveCourse(permissions.BasePermission):
+    """检查用户是否可以退出课程"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以让学生退出任何课程
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师可以让学生退出自己创建的课程
+        if request.user.role == 'TEACHER':
+            return obj.teacher == request.user
+        # 学生只能退出自己加入的未结束的课程
+        if request.user.role == 'STUDENT':
+            return request.user in obj.students.all()
+        return False
