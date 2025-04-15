@@ -275,7 +275,7 @@ export const dynamicRoutes: RouteRecordRaw[] = [
     },
     children: [
       {
-        path: "subject",
+        path: "subject-list",
         component: () => import("@/pages/subject/index.vue"),
         name: "Subject-Manage",
         meta: {
@@ -284,12 +284,21 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         }
       },
       {
-        path: "course",
+        path: "course-manage",
         component: () => import("@/pages/course/index.vue"),
         name: "Course-Manage",
         meta: {
           title: "课程列表",
-          roles: ["TEACHER", "ADMIN", "STUDENT"]
+          roles: ["TEACHER", "ADMIN"]
+        }
+      },
+      {
+        path: "course-list",
+        component: () => import("@/pages/course/student.vue"),
+        name: "Course-List",
+        meta: {
+          title: "课程列表",
+          roles: ["STUDENT"]
         }
       },
       {

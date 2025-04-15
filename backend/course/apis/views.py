@@ -123,15 +123,25 @@ class CourseViewSet(viewsets.ModelViewSet):
         course = get_object_or_404(Course, course_code=course_code)
         if request.user in course.students.all():
             raise ValidationError("您已经加入该课程")
+        # 更新课程状态
+        course.calculate_status()
+        # 如果课程已结束，则无法加入
+        if course.status == "completed":
+            raise ValidationError("该课程已结束，无法加入")
         
         course.students.add(request.user)
         return Response(None, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
+    @standard_response("退出课程成功")
     def leave(self, request, pk=None):
         course = self.get_object()
         if request.user not in course.students.all():
-            return Response({'error': '您未加入该课程'}, status=status.HTTP_400_BAD_REQUEST)
-        
+            raise ValidationError("您未加入该课程")
+        # 更新课程状态
+        course.calculate_status()
+        # 如果课程已结束，则无法退出
+        if course.status == "completed":
+            raise ValidationError("该课程已结束，无法退出")
         course.students.remove(request.user)
-        return Response({'message': '成功退出课程'}, status=status.HTTP_200_OK)
+        return Response(None, status=status.HTTP_200_OK)

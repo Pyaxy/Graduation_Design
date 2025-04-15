@@ -133,6 +133,20 @@ class CourseJoinTestCase(APITestCase):
     # endregion
 
     # region 权限测试
+    def test_join_course_with_unauthorized_user(self):
+        """测试未授权用户访问时返回401"""
+        response = self.client.post(
+            f'{self.url}',
+            data={
+                "course_code": "invalid_course_code"
+            }
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        # 是否有message和data
+        self.assertIn("message", response.data)
+        self.assertIn("data", response.data)
+        print("-----未授权用户访问时返回401测试结束-----")
+    
     def test_join_course_with_teacher(self):
         """测试教师加入课程"""
         print("-----正在测试教师加入课程-----")
@@ -204,4 +218,20 @@ class CourseJoinTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('您已经加入该课程', response.data['message'])
         print("-----加入已经加入的课程测试结束-----")
+
+    def test_join_course_with_completed_course(self):
+        """测试加入已结束的课程"""
+        print("-----正在测试加入已结束的课程-----")
+        self.create_courses(count=1, start_delta=1, end_delta=1)
+        course_code = Course.objects.first().course_code
+        response = self.client.post(
+            f'{self.url}',
+            data={
+                "course_code": course_code
+            },
+            HTTP_AUTHORIZATION=f"Bearer {self.student_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('该课程已结束，无法加入', response.data['message'])
+        print("-----加入已结束的课程测试结束-----")
     # endregion
