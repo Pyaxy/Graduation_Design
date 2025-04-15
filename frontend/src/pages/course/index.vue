@@ -46,13 +46,11 @@ const formRules: FormRules<CreateOrUpdateCourseRequestData> = {
 }
 
 function handleCreateOrUpdate() {
-  console.log("formRef.value:", formRef.value)
   formRef.value?.validate((valid) => {
     if (!valid) {
       ElMessage.error("表单校验不通过")
       return
     }
-    console.log("formData.value:", formData.value)
     loading.value = true
     const formDataObj = new FormData()
     const processedData = {
@@ -60,7 +58,6 @@ function handleCreateOrUpdate() {
       start_date: dayjs(formData.value.start_date).format("YYYY-MM-DD"),
       end_date: dayjs(formData.value.end_date).format("YYYY-MM-DD")
     }
-    console.log("processedData:", processedData)
     Object.entries(processedData).forEach(([key, value]) => {
       if (value !== undefined) {
         formDataObj.append(key, value.toString())
@@ -254,16 +251,16 @@ watch([() => paginationData.currentPage, () => paginationData.pageSize], getCour
           <el-table-column prop="description" label="课程描述" align="center" />
           <el-table-column prop="teacher.name" label="教师" align="center" />
           <el-table-column prop="course_code" label="课程码" align="center" />
-          <el-table-column prop="status_display" label="状态" align="center">
+          <el-table-column prop="status" label="状态" align="center">
             <template #default="scope">
               <el-tag v-if="scope.row.status === 'in_progress'" type="success" effect="plain">
-                {{ scope.row.status_display }}
+                进行中
               </el-tag>
               <el-tag v-else-if="scope.row.status === 'completed'" type="info" effect="plain">
-                {{ scope.row.status_display }}
+                已结束
               </el-tag>
               <el-tag v-else type="warning" effect="plain">
-                {{ scope.row.status_display }}
+                未开始
               </el-tag>
             </template>
           </el-table-column>

@@ -320,7 +320,8 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         component: () => import("@/pages/teacher/CreateTeacher.vue"),
         name: "CreateTeacher",
         meta: {
-          title: "创建教师账号"
+          title: "创建教师账号",
+          elIcon: "User"
         }
       }
     ]

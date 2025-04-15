@@ -1,6 +1,7 @@
 from django.db import models
 from accounts.models import User
 import uuid
+from django.utils import timezone
 
 class Course(models.Model):
     STATUS_CHOICES = (
@@ -28,3 +29,18 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_status_display()})"
+
+    def calculate_status(self):
+        """根据当前时间和课程的开始/结束日期计算状态"""
+        today = timezone.now().date()
+        if today < self.start_date:
+            return 'not_started'
+        elif today > self.end_date:
+            return 'completed'
+        else:
+            return 'in_progress'
+
+    def save(self, *args, **kwargs):
+        """重写save方法，在保存时自动更新状态"""
+        self.status = self.calculate_status()
+        super().save(*args, **kwargs)

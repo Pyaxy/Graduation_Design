@@ -11,13 +11,26 @@ class UserSerializer(serializers.ModelSerializer):
 class CourseSerializer(serializers.ModelSerializer):
     teacher = UserSerializer(read_only=True)
     students = UserSerializer(many=True, read_only=True)
+    current_status = serializers.SerializerMethodField()
     
     class Meta:
         model = Course
         fields = ['id', 'name', 'description', 'teacher', 'students', 
-                 'course_code', 'status', 'created_at', 'updated_at',
+                 'course_code', 'status', 'current_status', 'created_at', 'updated_at',
                  'start_date', 'end_date']
         read_only_fields = ['course_code', 'created_at', 'updated_at']
+
+    def get_current_status(self, obj):
+        """获取当前状态"""
+        return obj.calculate_status()
+
+    def to_representation(self, instance):
+        """在序列化时更新状态"""
+        data = super().to_representation(instance)
+        # 更新数据库中的状态
+        instance.status = instance.calculate_status()
+        instance.save(update_fields=['status'])
+        return data
 
 
 class CourseCreateSerializer(serializers.ModelSerializer):
