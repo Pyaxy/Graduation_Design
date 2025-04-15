@@ -1,7 +1,7 @@
 from rest_framework.test import APITestCase
 from rest_framework import status
 from course.models import Course
-from user.models import User
+from accounts.models import User
 from django.urls import reverse
 import datetime
 
@@ -118,3 +118,112 @@ class CourseDeleteTestCase(APITestCase):
         )
     # endregion
 
+    # region 正常业务测试
+    def test_delete_course_with_teacher(self):
+        """测试教师删除课程"""
+        self.create_courses(1)
+        course = Course.objects.first()
+        response = self.client.delete(
+            f'{self.url}{course.id}/',
+            headers={"Authorization": f"Bearer {self.teacher_token}"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Course.objects.count(), 0)
+
+    def test_delete_course_with_admin(self):
+        """测试管理员删除课程"""
+        self.create_courses(1)
+        course = Course.objects.first()
+        response = self.client.delete(
+            f'{self.url}{course.id}/',
+            headers={"Authorization": f"Bearer {self.admin_token}"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Course.objects.count(), 0)
+    # endregion
+
+    # region 权限测试
+    def test_delete_course_with_unauthorized_user(self):
+        """测试未授权用户删除课程"""
+        self.create_courses(1)
+        course = Course.objects.first()
+        response = self.client.delete(
+            f'{self.url}{course.id}/',
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_delete_course_with_student(self):
+        """测试学生删除课程"""
+        self.create_courses(1)
+        course = Course.objects.first()
+        response = self.client.delete(
+            f'{self.url}{course.id}/',
+            headers={"Authorization": f"Bearer {self.student_token}"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_course_with_teacher_and_course_is_his_course(self):
+        """测试教师删除自己创建的课程"""
+        self.create_courses(1)
+        course = Course.objects.first()
+        response = self.client.delete(
+            f'{self.url}{course.id}/',
+            headers={"Authorization": f"Bearer {self.teacher_token}"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Course.objects.count(), 0)
+
+    def test_delete_course_with_teacher_and_course_is_not_his_course(self):
+        """测试教师删除非自己创建的课程"""
+        self.create_courses(1, token=self.teacher2_token)
+        course = Course.objects.first()
+        response = self.client.delete(
+            f'{self.url}{course.id}/',
+            headers={"Authorization": f"Bearer {self.teacher_token}"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(Course.objects.count(), 1)
+    
+    def test_delete_course_with_admin_and_course_is_his_course(self):
+        """测试管理员删除自己创建的课程"""
+        self.create_courses(1, token=self.admin_token)
+        course = Course.objects.first()
+        response = self.client.delete(
+            f'{self.url}{course.id}/',
+            headers={"Authorization": f"Bearer {self.admin_token}"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Course.objects.count(), 0)
+
+    def test_delete_course_with_admin_and_course_is_not_his_course(self):
+        """测试管理员删除非自己创建的课程"""
+        self.create_courses(1, token=self.teacher_token)
+        course = Course.objects.first()
+        response = self.client.delete(
+            f'{self.url}{course.id}/',
+            headers={"Authorization": f"Bearer {self.admin_token}"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Course.objects.count(), 0)
+    # endregion
+
+    # region 数据验证测试
+    def test_delete_nonexistent_course_id(self):
+        """测试删除不存在的课程ID"""
+        response = self.client.delete(
+            f'{self.url}999999/',
+            headers={"Authorization": f"Bearer {self.teacher_token}"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_deleted_course(self):
+        """测试删除已删除的课程"""
+        self.create_courses(1)
+        course = Course.objects.first()
+        course.delete()
+        response = self.client.delete(
+            f'{self.url}{course.id}/',
+            headers={"Authorization": f"Bearer {self.teacher_token}"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    # endregion

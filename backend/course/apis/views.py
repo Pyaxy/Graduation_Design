@@ -45,7 +45,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         elif self.action in ['update', 'partial_update']:
             permission_classes = [IsAuthenticated, CanUpdateCourse]
         elif self.action == 'destroy':
-            permission_classes = [IsAuthenticated, CanDeleteCourse]
+            permission_classes = [IsTeacherOrAdmin, CanDeleteCourse]
         elif self.action in ['join']:
             permission_classes = [IsStudent]
         elif self.action in ['leave']:
