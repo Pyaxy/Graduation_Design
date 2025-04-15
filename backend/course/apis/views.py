@@ -5,16 +5,16 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from ..models import Course
-from ..serializers import CourseSerializer
+from .serializers import CourseSerializer, JoinCourseSerializer
 import random
 import string
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
-from accounts.permissions import IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse
+from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse
 from CodeCollab.api.decorators import standard_response
-from ..serializers import CourseCreateSerializer
-from rest_framework import serializers
+from .serializers import CourseCreateSerializer
+from rest_framework.exceptions import ValidationError
 # Create your views here.
 
 class CustomPagination(PageNumberPagination):
@@ -44,6 +44,8 @@ class CourseViewSet(viewsets.ModelViewSet):
             permission_classes = [IsAuthenticated, CanUpdateCourse]
         elif self.action == 'destroy':
             permission_classes = [IsAuthenticated, CanDeleteCourse]
+        elif self.action == 'join':
+            permission_classes = [IsStudent]
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
@@ -88,25 +90,11 @@ class CourseViewSet(viewsets.ModelViewSet):
     
     @standard_response("创建成功")
     def create(self, request, *args, **kwargs):
-        print("request.data:")
-        print(request.data)
         return super().create(request, *args, **kwargs)
     
     @standard_response("更新成功")
     def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        if request.user.role != 'ADMIN':
-            # 非管理员只能更新课程的名称、描述、开始日期和结束日期
-            allowed_fields = ['name', 'description', 'start_date', 'end_date']
-            # 检查请求数据中是否只包含允许的字段
-            for field in request.data.keys():
-                if field not in allowed_fields:
-                    raise serializers.ValidationError({f"{field}": "不允许更新字段"})
-
-        serializer = self.get_serializer(instance, data=request.data, partial=False)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
+        return super().update(request, *args, **kwargs)
     
     @standard_response("更新成功")
     def partial_update(self, request, *args, **kwargs):
@@ -126,17 +114,18 @@ class CourseViewSet(viewsets.ModelViewSet):
         serializer.save(teacher=self.request.user, course_code=course_code)
 
     @action(detail=False, methods=['post'])
+    @standard_response("加入课程成功")
     def join(self, request):
-        course_code = request.data.get('course_code')
-        if not course_code:
-            return Response({'error': '课程码不能为空'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = JoinCourseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        course_code = serializer.validated_data['course_code']
         
         course = get_object_or_404(Course, course_code=course_code)
         if request.user in course.students.all():
-            return Response({'error': '您已经加入该课程'}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError("您已经加入该课程")
         
         course.students.add(request.user)
-        return Response({'message': '成功加入课程'}, status=status.HTTP_200_OK)
+        return Response(None, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def leave(self, request, pk=None):

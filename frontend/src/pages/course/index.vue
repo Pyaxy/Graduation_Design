@@ -40,7 +40,7 @@ const formRef = ref<FormInstance | null>(null)
 const formData = ref<CreateOrUpdateCourseRequestData>(cloneDeep(DEFAULT_FORM_DATA))
 const formRules: FormRules<CreateOrUpdateCourseRequestData> = {
   name: [{ required: true, trigger: "blur", message: "请输入课程名称" }],
-  description: [{ required: true, trigger: "blur", message: "请输入课程描述" }],
+  description: [],
   start_date: [{ required: true, trigger: "blur", message: "请选择开始日期" }],
   end_date: [{ required: true, trigger: "blur", message: "请选择结束日期" }]
 }

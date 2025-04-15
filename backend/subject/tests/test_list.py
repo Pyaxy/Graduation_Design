@@ -65,9 +65,6 @@ class SubjectListTestCase(APITestCase):
         
         print("-----测试数据准备完成-----\n")
 
-    # endregion
-
-    # region 测试准备课题数据
     def setUp(self):
         """每个测试方法执行前的准备工作"""
         # 清空课题数据，保持数据库干净
