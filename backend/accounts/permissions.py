@@ -118,4 +118,18 @@ class CanLeaveCourse(permissions.BasePermission):
         if request.user.role == 'STUDENT':
             return request.user in obj.students.all()
         return False
+    
+class CanSeeStudents(permissions.BasePermission):
+    """检查用户是否可以查看学生列表"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以查看任何学生的列表
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师可以查看自己创建的课程的学生列表
+        if request.user.role == 'TEACHER':
+            return obj.teacher == request.user
+        # 学生可以查看自己加入的课程的学生列表
+        if request.user.role == 'STUDENT':
+            return request.user in obj.students.all()
+        return False
 # endregion

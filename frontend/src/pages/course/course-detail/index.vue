@@ -38,7 +38,7 @@ const studentsLoading = ref(false)
 const studentsData = ref<any[]>([])
 const searchFormRef = ref()
 const searchData = reactive({
-  search: ""
+  student_search: ""
 })
 
 // 获取学生列表
@@ -66,7 +66,7 @@ function handleSearch() {
 // 重置搜索
 function resetSearch() {
   searchFormRef.value?.resetFields()
-  searchData.search = ""
+  searchData.student_search = ""
   handleSearch()
 }
 
@@ -137,8 +137,8 @@ watch([() => paginationData.currentPage, () => paginationData.pageSize], getStud
           <!-- 学生列表搜索区域 -->
           <el-card v-loading="studentsLoading" shadow="never" class="search-wrapper">
             <el-form ref="searchFormRef" :inline="true" :model="searchData">
-              <el-form-item prop="search" label="学生姓名或学号">
-                <el-input v-model="searchData.search" placeholder="请输入" />
+              <el-form-item prop="student_search" label="学生姓名或学号">
+                <el-input v-model="searchData.student_search" placeholder="请输入" />
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" :icon="Search" @click="handleSearch">

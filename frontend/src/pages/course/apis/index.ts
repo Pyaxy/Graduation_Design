@@ -76,7 +76,7 @@ export function leaveCourse(id: string, data?: LeaveCourseRequestData) {
 export function getStudents(id: string, params?: {
   page: number
   page_size: number
-  search?: string
+  student_search?: string
 }) {
   return request<GetStudentsResponse>({
     url: `/courses/${id}/students/`,

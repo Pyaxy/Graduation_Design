@@ -11,7 +11,7 @@ import string
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
-from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse, CanLeaveCourse
+from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse, CanLeaveCourse, CanSeeStudents
 from CodeCollab.api.decorators import standard_response
 from .serializers import CourseCreateSerializer
 from rest_framework.exceptions import ValidationError
@@ -54,6 +54,8 @@ class CourseViewSet(viewsets.ModelViewSet):
             permission_classes = [IsStudent]
         elif self.action in ['leave']:
             permission_classes = [IsAuthenticated, CanLeaveCourse]
+        elif self.action in ['students']:
+            permission_classes = [IsAuthenticated, CanSeeStudents]
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
@@ -198,12 +200,10 @@ class CourseViewSet(viewsets.ModelViewSet):
         course = self.get_object()
         students = course.students.all()
 
-        # 搜索
-        search = request.query_params.get('search', '')
+        # 搜索, 搜索学生姓名或学号
+        search = request.query_params.get('student_search', '')
         if search:
             students = students.filter(Q(name__icontains=search) | Q(user_id__icontains=search))
-            if not students.exists():
-                raise ValidationError("没有找到相关学生")
 
         # 分页
         page = self.paginate_queryset(students)

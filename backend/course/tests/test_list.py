@@ -352,7 +352,7 @@ class CourseListTestCase(APITestCase):
     def test_course_list_with_teacher_paginated_courses_num_greater_than_page_size_and_visit_last_page(self):
         """测试教师访问数量大于每页数量时，访问最后一页时能正确分页返回数据"""
         print("-----正在测试教师访问数量大于每页数量时，访问最后一页时能正确分页返回数据-----")
-        # 创建11个测试课程
+        # 创建25个测试课程
         created_courses = self.create_courses(25, token=self.teacher_token)
         
         response = self.client.get(
