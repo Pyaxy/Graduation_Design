@@ -8,17 +8,17 @@ export interface CourseData {
   description: string
   // 教师
   teacher: {
-    id: string
-    username: string
-    first_name: string
-    last_name: string
+    user_id: string
+    name: string
+    role: string
+    role_display: string
   }
   // 学生列表
   students: {
-    id: string
-    username: string
-    first_name: string
-    last_name: string
+    user_id: string
+    name: string
+    role: string
+    role_display: string
   }[]
   // 课程码
   course_code: string
@@ -63,4 +63,25 @@ export interface CourseDetailResponse {
 // 加入课程的请求数据
 export interface JoinCourseRequestData {
   course_code: string
+}
+
+// 退出课程的请求数据
+export interface LeaveCourseRequestData {
+  student_user_id: string
+}
+
+// 获取学生列表的响应数据
+export interface GetStudentsResponse {
+  data: {
+    count: number
+    next: string | null
+    previous: string | null
+    results: {
+      user_id: string
+      name: string
+      role: string
+      role_display: string
+    }[]
+  }
+  message: string
 }

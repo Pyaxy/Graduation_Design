@@ -302,6 +302,16 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: "course-detail/:id",
+        component: () => import("@/pages/course/course-detail/index.vue"),
+        name: "Course-Detail",
+        meta: {
+          title: "课程详情",
+          roles: ["TEACHER", "ADMIN", "STUDENT"],
+          hidden: true
+        }
+      },
+      {
         path: "subject-detail/:id",
         component: () => import("@/pages/subject/detail.vue"),
         name: "Subject-Detail",

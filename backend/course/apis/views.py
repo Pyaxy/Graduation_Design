@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from ..models import Course
-from .serializers import CourseSerializer, JoinCourseSerializer, LeaveCourseSerializer
+from .serializers import CourseSerializer, JoinCourseSerializer, LeaveCourseSerializer, UserSerializer
 import random
 import string
 from django_filters.rest_framework import DjangoFilterBackend
@@ -17,6 +17,7 @@ from .serializers import CourseCreateSerializer
 from rest_framework.exceptions import ValidationError
 from accounts.models import User
 from django.http import Http404
+from django.db.models import Q
 # Create your views here.
 
 class CustomPagination(PageNumberPagination):
@@ -27,17 +28,20 @@ class CustomPagination(PageNumberPagination):
 
 class CourseViewSet(viewsets.ModelViewSet):
     """课程视图集"""
+    # region 配置
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status']
-    search_fields = ['name', 'course_code', 'teacher__name']
+    search_fields = ['name', 'course_code', 'teacher__name', 'students__name']
     search_param = 'search'  # 指定搜索参数名为 search
     ordering_fields = ['created_at', 'updated_at']
     ordering = ['-created_at']
     pagination_class = CustomPagination
+    # endregion
 
+    # region 权限
     def get_permissions(self):
         """根据不同的操作设置不同的权限"""
         if self.action == 'create':
@@ -53,13 +57,17 @@ class CourseViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
-    
+    # endregion
+
+    # region 序列化器
     def get_serializer_class(self):
         """根据不同的操作设置不同的序列化器"""
         if self.action == 'create':
             return CourseCreateSerializer
         return super().get_serializer_class()
-    
+    # endregion
+
+    # region 查询集
     def get_queryset(self):
         """根据不同的操作设置不同的查询集"""
         user = self.request.user
@@ -78,7 +86,9 @@ class CourseViewSet(viewsets.ModelViewSet):
             # 管理员可以看到所有课程
             return queryset
         return queryset.none()
-    
+    # endregion
+
+    # region CRUD
     @standard_response("获取列表成功")
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -109,7 +119,7 @@ class CourseViewSet(viewsets.ModelViewSet):
     @standard_response("删除成功")
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
-        
+    # endregion
     def perform_create(self, serializer):
         # 生成唯一的课程码
         while True:
@@ -119,6 +129,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         
         serializer.save(teacher=self.request.user, course_code=course_code)
 
+    # region 加入课程
     @action(detail=False, methods=['post'])
     @standard_response("加入课程成功")
     def join(self, request):
@@ -141,7 +152,9 @@ class CourseViewSet(viewsets.ModelViewSet):
         # 保存课程
         course.save()
         return Response(None, status=status.HTTP_200_OK)
+    # endregion
 
+    # region 退出课程
     @action(detail=True, methods=['post'])
     @standard_response("退出课程成功")
     def leave(self, request, pk=None):
@@ -176,3 +189,28 @@ class CourseViewSet(viewsets.ModelViewSet):
             # 保存课程
             course.save()
         return Response(None, status=status.HTTP_200_OK)
+    # endregion
+
+    # region 获取学生列表
+    @action(detail=True, methods=['get'])
+    @standard_response("获取学生列表成功")
+    def students(self, request, *args, **kwargs):
+        course = self.get_object()
+        students = course.students.all()
+
+        # 搜索
+        search = request.query_params.get('search', '')
+        if search:
+            students = students.filter(Q(name__icontains=search) | Q(user_id__icontains=search))
+            if not students.exists():
+                raise ValidationError("没有找到相关学生")
+
+        # 分页
+        page = self.paginate_queryset(students)
+        if page is not None:
+            serializer = UserSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = UserSerializer(students, many=True)
+        return Response(serializer.data)
+    # endregion

@@ -1,4 +1,4 @@
-import type { CourseData, CourseDetailResponse, CourseListResponse, CreateOrUpdateCourseRequestData, JoinCourseRequestData } from "./type"
+import type { CourseDetailResponse, CourseListResponse, GetStudentsResponse, JoinCourseRequestData, LeaveCourseRequestData } from "./type"
 import { request } from "@/http/axios"
 
 // 获取课程列表
@@ -12,6 +12,14 @@ export function getCourseList(params: {
     url: "/courses/",
     method: "get",
     params
+  })
+}
+
+// 获取课程详情
+export function getCourseDetail(id: string) {
+  return request<CourseDetailResponse>({
+    url: `/courses/${id}/`,
+    method: "get"
   })
 }
 
@@ -56,9 +64,23 @@ export function joinCourse(data: JoinCourseRequestData) {
 }
 
 // 退出课程
-export function leaveCourse(id: string) {
+export function leaveCourse(id: string, data?: LeaveCourseRequestData) {
   return request<CourseDetailResponse>({
     url: `/courses/${id}/leave/`,
-    method: "post"
+    method: "post",
+    data
+  })
+}
+
+// 获取学生列表
+export function getStudents(id: string, params?: {
+  page: number
+  page_size: number
+  search?: string
+}) {
+  return request<GetStudentsResponse>({
+    url: `/courses/${id}/students/`,
+    method: "get",
+    params
   })
 }
