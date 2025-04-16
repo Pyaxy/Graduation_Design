@@ -2,6 +2,7 @@ from rest_framework import permissions
 from rest_framework.exceptions import PermissionDenied, AuthenticationFailed
 
 
+# region 基础权限
 class IsStudent(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.role == "STUDENT"
@@ -26,8 +27,8 @@ class IsTeacherOrAdmin(permissions.BasePermission):
             request.user.role == "ADMIN" or
             request.user.is_staff
         )
-
-
+# endregion
+# region 注册权限
 class RegisterPermission(permissions.BasePermission):
     """
     注册权限类
@@ -54,8 +55,9 @@ class RegisterPermission(permissions.BasePermission):
         
         # STUDENT角色可以直接注册
         return True
+# endregion
 
-
+# region 课题权限
 class CanDeleteSubject(permissions.BasePermission):
     """检查用户是否可以删除课题"""
     def has_object_permission(self, request, view, obj):
@@ -78,8 +80,9 @@ class CanUpdateSubject(permissions.BasePermission):
         if request.user.role == 'TEACHER':
             return obj.creator == request.user
         return False
-    
+# endregion
 
+# region 课程权限
 class CanDeleteCourse(permissions.BasePermission):
     """检查用户是否可以删除课程"""
     def has_object_permission(self, request, view, obj):
@@ -115,3 +118,4 @@ class CanLeaveCourse(permissions.BasePermission):
         if request.user.role == 'STUDENT':
             return request.user in obj.students.all()
         return False
+# endregion
