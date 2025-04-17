@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from ..models import Course
+from ..models import Course, Group
 from .serializers import CourseSerializer, JoinCourseSerializer, LeaveCourseSerializer, UserSerializer
 import random
 import string
@@ -13,7 +13,7 @@ from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
 from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse, CanLeaveCourse, CanSeeStudents
 from CodeCollab.api.decorators import standard_response
-from .serializers import CourseCreateSerializer
+from .serializers import CourseCreateSerializer, GroupSerializer, GroupCreateSerializer
 from rest_framework.exceptions import ValidationError
 from accounts.models import User
 from django.http import Http404
@@ -26,6 +26,7 @@ class CustomPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
+# region 课程视图集
 class CourseViewSet(viewsets.ModelViewSet):
     """课程视图集"""
     # region 配置
@@ -214,3 +215,50 @@ class CourseViewSet(viewsets.ModelViewSet):
         serializer = UserSerializer(students, many=True)
         return Response(serializer.data)
     # endregion
+
+# endregion
+
+
+
+# region 小组视图集
+class GroupViewSet(viewsets.ModelViewSet):
+    """小组视图集"""
+    queryset = Group.objects.all()
+    serializer_class = GroupSerializer
+
+    # region 权限
+    def get_permissions(self):
+        """根据不同的操作设置不同的权限"""
+        # 创建小组需要学生权限
+        if self.action == 'create':
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+    # endregion
+
+    # region 序列化器
+    def get_serializer_class(self):
+        """根据不同的操作设置不同的序列化器"""
+        if self.action == 'create':
+            return GroupCreateSerializer
+        return GroupSerializer
+    # endregion
+    
+    # region CRUD
+    @standard_response("创建成功")
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        course = serializer.validated_data['course']
+        # 验证用户是否是课程学生
+        user = request.user
+        if user.role == 'STUDENT' and user not in course.students.all():
+            raise Http404("未查询到该课程")
+        if user.role == "TEACHER" and user != course.teacher:
+            raise Http404("未查询到该课程")
+        self.perform_create(serializer)
+        return Response(None, status=status.HTTP_201_CREATED)
+    # endregion
+    
+# endregion

@@ -43,6 +43,8 @@ export interface CreateOrUpdateCourseRequestData {
   description: string
   start_date: string
   end_date: string
+  max_group_size: number
+  min_group_size: number
 }
 
 export interface CourseListResponse {

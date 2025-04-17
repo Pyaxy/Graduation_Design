@@ -99,7 +99,9 @@ class CourseCreateTestCase(APITestCase):
             "name": "test_name",
             "description": "test_description",
             "start_date": self.get_day(days=1),
-            "end_date": self.get_day(days=2)
+            "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -130,7 +132,9 @@ class CourseCreateTestCase(APITestCase):
         data = {
             "description": "test_description",
             "start_date": self.get_day(days=1),
-            "end_date": self.get_day(days=2)
+            "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -151,7 +155,9 @@ class CourseCreateTestCase(APITestCase):
         data = {
             "name": "test_name",
             "start_date": self.get_day(days=1),
-            "end_date": self.get_day(days=2)
+            "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -170,7 +176,9 @@ class CourseCreateTestCase(APITestCase):
         data = {
             "name": "test_name",
             "description": "test_description",
-            "end_date": self.get_day(days=2)
+            "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -191,7 +199,9 @@ class CourseCreateTestCase(APITestCase):
         data = {
             "name": "test_name",
             "description": "test_description",
-            "start_date": self.get_day(days=1)
+            "start_date": self.get_day(days=1),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -213,7 +223,9 @@ class CourseCreateTestCase(APITestCase):
             "name": "test_name",
             "description": "test_description",
             "start_date": self.get_day(days=2),
-            "end_date": self.get_day(days=1)
+            "end_date": self.get_day(days=1),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -225,6 +237,67 @@ class CourseCreateTestCase(APITestCase):
         # 是否返回message 
         self.assertIn("message", response.data)
         self.assertIn("开始时间不得比结束时间迟", response.data["message"])
+
+    def test_create_course_without_max_group_size(self):
+        """测试创建课程时没有最大小组人数"""
+        data = {
+            "name": "test_name",
+            "description": "test_description",
+            "start_date": self.get_day(days=1),
+            "end_date": self.get_day(days=2),
+            "min_group_size": 1
+        }
+        response = self.client.post(
+            self.url,
+            data=data,
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        # 是否返回400
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # 是否返回message
+        self.assertIn("message", response.data)
+        self.assertIn("max_group_size", response.data["message"])
+
+    def test_create_course_without_min_group_size(self):
+        """测试创建课程时没有最小小组人数"""
+        data = {
+            "name": "test_name",
+            "description": "test_description",
+            "start_date": self.get_day(days=1),
+            "end_date": self.get_day(days=2),
+            "max_group_size": 3
+        }
+        response = self.client.post(
+            self.url,
+            data=data,
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        # 是否返回400
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # 是否返回message
+        self.assertIn("message", response.data)
+        self.assertIn("min_group_size", response.data["message"])
+
+    def test_create_course_with_max_group_size_less_than_min_group_size(self):
+        """测试最大小组人数小于最小小组人数"""
+        data = {
+            "name": "test_name",
+            "description": "test_description",
+            "start_date": self.get_day(days=1),
+            "end_date": self.get_day(days=2),
+            "max_group_size": 1,
+            "min_group_size": 3
+        }
+        response = self.client.post(
+            self.url,
+            data=data,
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        # 是否返回400
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # 是否返回message
+        self.assertIn("message", response.data)
+        self.assertIn("最大小组人数不得小于最小小组人数", response.data["message"])
     # endregion
 
     # region 权限测试
@@ -234,7 +307,9 @@ class CourseCreateTestCase(APITestCase):
             "name": "test_name",
             "description": "test_description",
             "start_date": self.get_day(days=1),
-            "end_date": self.get_day(days=2)
+            "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -249,7 +324,9 @@ class CourseCreateTestCase(APITestCase):
             "name": "test_name",
             "description": "test_description",
             "start_date": self.get_day(days=1),
-            "end_date": self.get_day(days=2)
+            "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -265,7 +342,9 @@ class CourseCreateTestCase(APITestCase):
             "name": "test_name",
             "description": "test_description",
             "start_date": self.get_day(days=1),
-            "end_date": self.get_day(days=2)
+            "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -297,6 +376,8 @@ class CourseCreateTestCase(APITestCase):
             "description": "test_description",
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1,
             "status": "in_progress"
         }
         response = self.client.post(
@@ -329,6 +410,8 @@ class CourseCreateTestCase(APITestCase):
             "description": "test_description",
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1,
             "status": "completed"
         }
         response = self.client.post(
@@ -360,7 +443,9 @@ class CourseCreateTestCase(APITestCase):
             "name": "test_name",
             "description": "test_description",
             "start_date": self.get_day(days=1),
-            "end_date": self.get_day(days=2)
+            "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -393,7 +478,9 @@ class CourseCreateTestCase(APITestCase):
             "name": "test_name",
             "description": "test_description",
             "start_date": self.get_day(days=1),
-            "end_date": self.get_day(days=2)
+            "end_date": self.get_day(days=2),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -424,7 +511,9 @@ class CourseCreateTestCase(APITestCase):
             "name": "test_name",
             "description": "test_description",
             "start_date": self.get_day(days=-1),
-            "end_date": self.get_day(days=1)
+            "end_date": self.get_day(days=1),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
@@ -455,7 +544,9 @@ class CourseCreateTestCase(APITestCase):
             "name": "test_name",
             "description": "test_description",
             "start_date": self.get_day(days=-2),
-            "end_date": self.get_day(days=-1)
+            "end_date": self.get_day(days=-1),
+            "max_group_size": 3,
+            "min_group_size": 1
         }
         response = self.client.post(
             self.url,
