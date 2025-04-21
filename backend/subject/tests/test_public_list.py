@@ -57,7 +57,7 @@ class PublicSubjectTestCase(APITestCase):
         cls.subject_data_list = [{
             "title": f"test_title_{i}",
             "description": f"test_description_{i}",
-            "max_students": i
+            "languages": ["C", "CPP", "JAVA", "PYTHON"]
         } for i in range(1, MAX_SUBJECTS)]  # 修改这里，创建MAX_SUBJECTS个数据
         
         print("-----测试数据准备完成-----\n")
@@ -96,7 +96,7 @@ class PublicSubjectTestCase(APITestCase):
                 data={
                 "title": data["title"],
                 "description": data["description"],
-                "max_students": data["max_students"],
+                "languages": data["languages"],
                 },
                 HTTP_AUTHORIZATION=f"Bearer {token if token else self.teacher_token}"
             )
@@ -158,7 +158,7 @@ class PublicSubjectTestCase(APITestCase):
             self.assertEqual(subject["creator"]["user_id"], self.teacher.user_id)
             self.assertIsNotNone(subject["description"])
             self.assertIsNotNone(subject["title"])
-            self.assertIsNotNone(subject["max_students"])
+            self.assertIsNotNone(subject["languages"])
             self.assertIsNotNone(subject["created_at"])
             self.assertIsNotNone(subject["id"])
 
@@ -187,7 +187,7 @@ class PublicSubjectTestCase(APITestCase):
             self.assertEqual(subject["creator"]["user_id"], self.teacher.user_id)
             self.assertIsNotNone(subject["description"])
             self.assertIsNotNone(subject["title"])
-            self.assertIsNotNone(subject["max_students"])
+            self.assertIsNotNone(subject["languages"])
             self.assertIsNotNone(subject["created_at"])
             self.assertIsNotNone(subject["id"])
     
@@ -216,7 +216,7 @@ class PublicSubjectTestCase(APITestCase):
             self.assertEqual(subject["creator"]["user_id"], self.teacher.user_id)
             self.assertIsNotNone(subject["description"])
             self.assertIsNotNone(subject["title"])
-            self.assertIsNotNone(subject["max_students"])
+            self.assertIsNotNone(subject["languages"])
             self.assertIsNotNone(subject["created_at"])
             self.assertIsNotNone(subject["id"])
 
@@ -782,7 +782,7 @@ class PublicSubjectTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10,
+            "languages": ["C", "CPP", "JAVA", "PYTHON"],
             "description_file": SimpleUploadedFile("test.txt", content=b"test", content_type="text/plain")
         }
         response = self.client.post(
@@ -799,7 +799,7 @@ class PublicSubjectTestCase(APITestCase):
         public_subject = PublicSubject.objects.first()
         self.assertEqual(public_subject.title, "test_title")
         self.assertEqual(public_subject.description, "test_description")
-        self.assertEqual(public_subject.max_students, 10)
+        self.assertEqual(public_subject.languages, ["C", "CPP", "JAVA", "PYTHON"])
         self.assertEqual(public_subject.creator, self.teacher)
         self.assertIsNotNone(public_subject.description_file)
         self.assertTrue(os.path.exists(public_subject.description_file.path))

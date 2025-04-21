@@ -119,8 +119,8 @@ class SubjectViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
         if request.user.role != 'ADMIN':
-            # 非管理员只能更新课题的标题、描述、最大学生数和描述文件
-            allowed_fields = ['title', 'description', 'max_students', 'description_file']
+            # 非管理员只能更新课题的标题、描述、描述文件
+            allowed_fields = ['title', 'description', 'description_file', 'languages']
             # 检查请求数据中是否只包含允许的字段
             for field in request.data.keys():
                 if field not in allowed_fields:
@@ -221,7 +221,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
                 title=subject.title,
                 description=subject.description,
                 creator=subject.creator,
-                max_students=subject.max_students,
+                languages=subject.languages,
                 version=version
             )
             

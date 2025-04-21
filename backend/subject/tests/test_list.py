@@ -60,7 +60,7 @@ class SubjectListTestCase(APITestCase):
         cls.subject_data_list = [{
             "title": f"test_title_{i}",
             "description": f"test_description_{i}",
-            "max_students": i
+            "languages": ["C", "CPP", "PYTHON"]
         } for i in range(1, MAX_SUBJECTS)]  # 修改这里，创建MAX_SUBJECTS个数据
         
         print("-----测试数据准备完成-----\n")
@@ -93,7 +93,7 @@ class SubjectListTestCase(APITestCase):
             Subject(
                 title=data["title"],
                 description=data["description"],
-                max_students=data["max_students"],
+                languages=data["languages"],
                 creator=creator,
                 status=status
             ) for data in data_to_create

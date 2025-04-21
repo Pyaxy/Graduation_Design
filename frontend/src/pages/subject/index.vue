@@ -31,16 +31,22 @@ const DEFAULT_FORM_DATA: CreateOrUpdateSubjectRequestData = {
   id: undefined,
   title: "",
   description: "",
-  max_students: 1
+  languages: []
 }
 const dialogVisible = ref<boolean>(false)
 const formRef = ref<FormInstance | null>(null)
 const formData = ref<CreateOrUpdateSubjectRequestData>(cloneDeep(DEFAULT_FORM_DATA))
 const descriptionFile = ref<File | null>(null)
+const languageOptions = [
+  { label: "Python", value: "PYTHON" },
+  { label: "Java", value: "JAVA" },
+  { label: "C++", value: "CPP" },
+  { label: "C", value: "C" }
+]
 const formRules: FormRules<CreateOrUpdateSubjectRequestData> = {
   title: [{ required: true, trigger: "blur", message: "请输入课题标题" }],
   description: [{ required: true, trigger: "blur", message: "请输入课题描述" }],
-  max_students: [{ required: true, trigger: "blur", message: "请输入最大学生数" }]
+  languages: [{ required: true, trigger: "change", message: "请选择至少一种编程语言" }]
 }
 
 function handleCreateOrUpdate() {
@@ -51,11 +57,21 @@ function handleCreateOrUpdate() {
     }
     loading.value = true
     const formDataObj = new FormData()
+
+    // 处理基本字段
     Object.entries(formData.value).forEach(([key, value]) => {
       if (value !== undefined) {
-        formDataObj.append(key, value.toString())
+        if (key === "languages") {
+          // 对于languages数组，每个元素单独添加
+          (value as string[]).forEach((lang, index) => {
+            formDataObj.append(`languages[${index}]`, lang)
+          })
+        } else {
+          formDataObj.append(key, value.toString())
+        }
       }
     })
+
     if (descriptionFile.value) {
       formDataObj.append("description_file", descriptionFile.value)
     }
@@ -111,7 +127,7 @@ function handleUpdate(row: SubjectData) {
     id: row.id,
     title: row.title,
     description: row.description,
-    max_students: row.max_students
+    languages: row.languages
   })
 }
 // #endregion
@@ -310,7 +326,19 @@ onMounted(() => {
           <el-table-column prop="title" label="课题标题" align="center" />
           <el-table-column prop="description" label="课题描述" align="center" />
           <el-table-column prop="creator.name" label="创建人" align="center" />
-          <el-table-column prop="max_students" label="最大学生数" align="center" />
+          <el-table-column prop="languages" label="适用语言" align="center">
+            <template #default="scope">
+              <el-tag
+                v-for="lang in scope.row.languages"
+                :key="lang"
+                class="mx-1"
+                type="success"
+                effect="plain"
+              >
+                {{ languageOptions.find(opt => opt.value === lang)?.label }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="status_display" label="审核状态" align="center">
             <template #default="scope">
               <el-tag v-if="scope.row.status === 'APPROVED'" type="success" effect="plain">
@@ -353,7 +381,7 @@ onMounted(() => {
                 审核
               </el-button>
               <el-button
-                v-if="userRole === 'TEACHER' && scope.row.status === 'APPROVED' && scope.row.public_status === 'NOT_APPLIED'"
+                v-if="(userRole === 'TEACHER' || userRole === 'ADMIN') && scope.row.status === 'APPROVED' && scope.row.public_status === 'NOT_APPLIED'"
                 type="primary"
                 text
                 bg
@@ -420,8 +448,16 @@ onMounted(() => {
             </template>
           </el-upload>
         </el-form-item>
-        <el-form-item prop="max_students" label="最大学生数">
-          <el-input-number v-model="formData.max_students" :min="1" :max="10" />
+        <el-form-item prop="languages" label="适用语言">
+          <el-checkbox-group v-model="formData.languages">
+            <el-checkbox
+              v-for="option in languageOptions"
+              :key="option.value"
+              :label="option.value"
+            >
+              {{ option.label }}
+            </el-checkbox>
+          </el-checkbox-group>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -503,5 +539,9 @@ onMounted(() => {
 .pager-wrapper {
   display: flex;
   justify-content: flex-end;
+}
+
+.mx-1 {
+  margin: 0 4px;
 }
 </style>

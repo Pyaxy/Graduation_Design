@@ -56,7 +56,7 @@ class SubjectPublicTestCase(APITestCase):
         cls.subject_data_list = [{
             "title": f"test_title_{i}",
             "description": f"test_description_{i}",
-            "max_students": i
+            "languages": ["C", "CPP", "JAVA", "PYTHON"]
         } for i in range(1, MAX_SUBJECTS)]  # 修改这里，创建MAX_SUBJECTS个数据
         
         print("-----测试数据准备完成-----\n")
@@ -94,7 +94,7 @@ class SubjectPublicTestCase(APITestCase):
                 data={
                 "title": data["title"],
                 "description": data["description"],
-                "max_students": data["max_students"],
+                "languages": data["languages"],
                 },
                 HTTP_AUTHORIZATION=f"Bearer {token if token else self.teacher_token}"
             )

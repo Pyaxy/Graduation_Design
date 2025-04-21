@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 from accounts.models import User
 from .validators import validate_pdf_file, validate_file_size
 
@@ -22,6 +23,13 @@ class Subject(models.Model):
         ('REJECTED', '已拒绝'),
     )
 
+    LANGUAGE_CHOICES = (
+        ('C', 'C'),
+        ('CPP', 'C++'),
+        ('JAVA', 'Java'),
+        ('PYTHON', 'Python'),
+    )
+
     title = models.CharField(max_length=100, verbose_name="课题标题")
     description = models.TextField(verbose_name="课题描述")
     description_file = models.FileField(
@@ -38,7 +46,12 @@ class Subject(models.Model):
         verbose_name="创建者",
         limit_choices_to={'role__in': ['TEACHER', 'ADMIN']}
     )
-    max_students = models.PositiveIntegerField(default=1, verbose_name="最大学生数量")
+    languages = ArrayField(
+        models.CharField(max_length=10, choices=LANGUAGE_CHOICES),
+        verbose_name="适用语言",
+        help_text="可多选",
+        default=list
+    )
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
@@ -119,7 +132,12 @@ class PublicSubject(models.Model):
         related_name="public_created_subjects",
         verbose_name="创建者"
     )
-    max_students = models.PositiveIntegerField(default=1, verbose_name="最大学生数量")
+    languages = ArrayField(
+        models.CharField(max_length=10, choices=Subject.LANGUAGE_CHOICES),
+        verbose_name="适用语言",
+        help_text="可多选",
+        default=list
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="公开时间")
     version = models.PositiveIntegerField(default=1, verbose_name="版本号")
 

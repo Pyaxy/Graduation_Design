@@ -65,7 +65,7 @@ class SubjectUpdateTestCase(APITestCase):
         cls.subject_data_list = [{
             "title": f"test_title_{i}",
             "description": f"test_description_{i}",
-            "max_students": i
+            "languages": ["C", "CPP", "JAVA", "PYTHON"]
         } for i in range(1, MAX_SUBJECTS)]  # 修改这里，创建MAX_SUBJECTS个数据
         
         
@@ -100,7 +100,7 @@ class SubjectUpdateTestCase(APITestCase):
             Subject(
                 title=data["title"],
                 description=data["description"],
-                max_students=data["max_students"],
+                languages=data["languages"],
                 creator=creator,
                 status=status
             ) for data in data_to_create
@@ -117,7 +117,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -128,7 +128,7 @@ class SubjectUpdateTestCase(APITestCase):
         subject.refresh_from_db()
         self.assertEqual(subject.title, "updated_title")
         self.assertEqual(subject.description, "updated_description")
-        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.languages, ["C", "PYTHON"])
         self.assertEqual(subject.status, "PENDING")
         # 更新时间是否变化
         self.assertNotEqual(subject.updated_at, before_update_time)
@@ -141,7 +141,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -152,7 +152,7 @@ class SubjectUpdateTestCase(APITestCase):
         subject.refresh_from_db()
         self.assertEqual(subject.title, "updated_title")
         self.assertEqual(subject.description, "updated_description")
-        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.languages, ["C", "PYTHON"])
         self.assertEqual(subject.status, "PENDING")
         # 更新时间是否变化
         self.assertNotEqual(subject.updated_at, before_update_time)
@@ -165,7 +165,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -176,7 +176,7 @@ class SubjectUpdateTestCase(APITestCase):
         subject.refresh_from_db()
         self.assertEqual(subject.title, "updated_title")
         self.assertEqual(subject.description, "updated_description")
-        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.languages, ["C", "PYTHON"])
         self.assertEqual(subject.status, "PENDING")
         # 更新时间是否变化
         self.assertNotEqual(subject.updated_at, before_update_time)
@@ -190,7 +190,7 @@ class SubjectUpdateTestCase(APITestCase):
         subject = Subject.objects.first()
         update_data = {
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -206,7 +206,7 @@ class SubjectUpdateTestCase(APITestCase):
         subject = Subject.objects.first()
         update_data = {
             "title": "updated_title",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -218,14 +218,14 @@ class SubjectUpdateTestCase(APITestCase):
     # endregion
 
     # region 字段类型测试
-    def test_update_subject_with_invalid_max_students(self):
-        """更新课题时，max_students字段类型错误"""
+    def test_update_subject_with_invalid_languages(self):
+        """更新课题时，languages字段类型错误"""
         self.create_subjects(1, self.teacher, "PENDING")
         subject = Subject.objects.first()
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": "invalid_max_students"
+            "languages": "invalid_languages"
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -233,7 +233,7 @@ class SubjectUpdateTestCase(APITestCase):
             HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("max_students", response.data["message"])
+        self.assertIn("languages", response.data["message"])
     # endregion
 
     # region 字段长度/大小限制测试
@@ -244,7 +244,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "a" * 101,
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -263,7 +263,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10,
+            "languages": ["C", "PYTHON"],
             "description_file": SimpleUploadedFile("test.txt", content=b"test", content_type="text/plain")
         }
         response = self.client.put(
@@ -285,7 +285,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -303,7 +303,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10,
+            "languages": ["C", "PYTHON"],
             "description_file": SimpleUploadedFile("large_file.txt", content=b"a" * 1024 * 1024 * 11, content_type="text/plain")
         }
         response = self.client.put(
@@ -321,7 +321,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10,
+            "languages": ["C", "PYTHON"],
             "description_file": SimpleUploadedFile("invalid_file.png", content=b"invalid", content_type="image/png")
         }
         response = self.client.put(
@@ -341,7 +341,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -356,7 +356,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -372,7 +372,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -388,7 +388,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -399,7 +399,7 @@ class SubjectUpdateTestCase(APITestCase):
         subject.refresh_from_db()
         self.assertEqual(subject.title, "updated_title")
         self.assertEqual(subject.description, "updated_description")
-        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.languages, ["C", "PYTHON"])
     
     def test_update_subject_with_teacher_update_other_teacher_subject(self):
         """更新课题时，教师用户尝试更新其他教师的课题"""
@@ -408,7 +408,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -424,7 +424,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10,
+            "languages": ["C", "PYTHON"],
             "status": "APPROVED"
         }
         response = self.client.put(
@@ -442,7 +442,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}{subject.id}/",
@@ -453,7 +453,7 @@ class SubjectUpdateTestCase(APITestCase):
         subject.refresh_from_db()
         self.assertEqual(subject.title, "updated_title")
         self.assertEqual(subject.description, "updated_description")
-        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.languages, ["C", "PYTHON"])
     # endregion
     
     # region 数据验证测试
@@ -462,7 +462,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }   
         response = self.client.put(
             f"{self.url}invalid_id/",
@@ -479,7 +479,7 @@ class SubjectUpdateTestCase(APITestCase):
         update_data = {
             "title": "updated_title",
             "description": "updated_description",
-            "max_students": 10
+            "languages": ["C", "PYTHON"]
         }
         response = self.client.put(
             f"{self.url}invalid_id/",

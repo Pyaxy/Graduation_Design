@@ -11,7 +11,7 @@ class SubjectAdmin(admin.ModelAdmin):
     raw_id_fields = ('creator', 'reviewer')
     fieldsets = (
         ('基本信息', {
-            'fields': ('title', 'description', 'description_file', 'max_students')
+            'fields': ('title', 'description', 'description_file', 'languages')
         }),
         ('创建信息', {
             'fields': ('creator', 'created_at', 'updated_at')

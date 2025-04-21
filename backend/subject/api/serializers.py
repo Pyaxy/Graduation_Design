@@ -25,7 +25,7 @@ class SubjectSerializer(serializers.ModelSerializer):
         model = Subject
         fields = [
             'id', 'title', 'description', 'description_file', 'description_file_url', 'creator',
-            'max_students', 'status', 'status_display', 'public_status', 'public_status_display', 'reviewer',
+            'languages', 'status', 'status_display', 'public_status', 'public_status_display', 'reviewer',
             'review_comments', 'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -46,10 +46,11 @@ class SubjectSerializer(serializers.ModelSerializer):
 class SubjectCreateSerializer(serializers.ModelSerializer):
     """课题创建序列化器"""
     status = serializers.ChoiceField(choices=Subject.STATUS_CHOICES, required=False, default="PENDING")
+    languages = serializers.ListField(child=serializers.ChoiceField(choices=Subject.LANGUAGE_CHOICES), required=True)
     class Meta:
         model = Subject
         fields = [
-            'title', 'description', 'description_file', 'max_students', 'status'
+            'title', 'description', 'description_file', 'languages', 'status'
         ]
 
     def validate(self, attrs):
