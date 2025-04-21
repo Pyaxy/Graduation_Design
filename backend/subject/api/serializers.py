@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from accounts.models import User
-from subject.models import Subject
+from subject.models import Subject, PublicSubject
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -18,17 +18,18 @@ class SubjectSerializer(serializers.ModelSerializer):
     creator = UserSerializer(read_only=True)
     reviewer = UserSerializer(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    public_status_display = serializers.CharField(source='get_public_status_display', read_only=True)
     description_file_url = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Subject
         fields = [
             'id', 'title', 'description', 'description_file', 'description_file_url', 'creator',
-            'max_students', 'status', 'status_display', 'reviewer',
+            'max_students', 'status', 'status_display', 'public_status', 'public_status_display', 'reviewer',
             'review_comments', 'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'status', 'status_display', 'reviewer',
+            'id', 'status', 'status_display', 'public_status', 'public_status_display', 'reviewer',
             'review_comments', 'created_at', 'updated_at'
         ]
         
@@ -97,3 +98,48 @@ class SubjectReviewSerializer(serializers.ModelSerializer):
         instance.save()
         
         return instance 
+
+
+class SubjectPublicApplySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subject
+        fields = []
+        read_only_fields = ('public_status', 'public_reviewer', 'public_review_comments')
+
+
+class SubjectPublicReviewSerializer(serializers.ModelSerializer):
+    public_status = serializers.ChoiceField(choices=Subject.PUBLIC_STATUS_CHOICES, required=True)
+    
+    class Meta:
+        model = Subject
+        fields = ['public_status', 'public_review_comments']
+        read_only_fields = ('public_reviewer',)
+
+
+    def update(self, instance, validated_data):
+        user = self.context['request'].user
+        instance.public_reviewer = user
+        instance.public_status = validated_data.get('public_status', instance.public_status)
+        instance.public_review_comments = validated_data.get('public_review_comments', instance.public_review_comments)
+        if instance.public_status == 'APPROVED':
+            instance.is_public = True
+        instance.save()
+        return instance
+
+
+class PublicSubjectSerializer(serializers.ModelSerializer):
+    creator = UserSerializer(read_only=True)
+    description_file_url = serializers.SerializerMethodField(read_only=True)
+    class Meta:
+        model = PublicSubject
+        fields = '__all__'
+        read_only_fields = ('original_subject', 'creator', 'version') 
+
+    def get_description_file_url(self, obj):
+        """获取文件的完整URL"""
+        if obj.description_file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.description_file.url)
+            return obj.description_file.url
+        return None

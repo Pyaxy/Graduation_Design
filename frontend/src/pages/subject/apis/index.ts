@@ -52,3 +52,24 @@ export function reviewSubject(id: number, data: { status: string, review_comment
     data
   })
 }
+
+export function applyPublicSubject(id: number) {
+  return request({
+    url: `/subjects/${id}/apply-public/`,
+    method: "post",
+    data: {
+      is_public: true
+    }
+  })
+}
+
+export function reviewPublicSubject(id: number, data: {
+  public_status: "APPROVED" | "REJECTED"
+  public_review_comments: string
+}) {
+  return request({
+    url: `/subjects/${id}/review-public/`,
+    method: "post",
+    data
+  })
+}

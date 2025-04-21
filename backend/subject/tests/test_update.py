@@ -363,7 +363,7 @@ class SubjectUpdateTestCase(APITestCase):
             data=update_data,
             HTTP_AUTHORIZATION=f"Bearer {self.student_token}"
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
     
     def test_update_pending_subject_with_unauthorized_user(self):
         """更新课题时，未授权用户尝试更新待审核课题"""

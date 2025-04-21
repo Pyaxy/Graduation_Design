@@ -7,7 +7,7 @@ import { CirclePlus, Delete, Download, Refresh, RefreshRight, Search } from "@el
 import { cloneDeep } from "lodash-es"
 import { storeToRefs } from "pinia"
 import { useRouter } from "vue-router"
-import { createSubjectApi, deleteSubject, getSubjectList, reviewSubject, updateSubject } from "./apis"
+import { applyPublicSubject, createSubjectApi, deleteSubject, getSubjectList, reviewPublicSubject, reviewSubject, updateSubject } from "./apis/index"
 
 defineOptions({
   name: "Subject"
@@ -121,7 +121,8 @@ const tableData = ref<SubjectData[]>([])
 const searchFormRef = ref<FormInstance | null>(null)
 const searchData = reactive({
   search: "",
-  status: "" as "PENDING" | "APPROVED" | "REJECTED" | ""
+  status: "" as "PENDING" | "APPROVED" | "REJECTED" | "",
+  public_status: "" as "NOT_APPLIED" | "PENDING" | "APPROVED" | "REJECTED" | ""
 })
 
 function getSubjectData() {
@@ -152,6 +153,7 @@ function resetSearch() {
   searchFormRef.value?.resetFields()
   searchData.search = ""
   searchData.status = ""
+  searchData.public_status = ""
   handleSearch()
 }
 // #endregion
@@ -193,6 +195,61 @@ function submitReview() {
 }
 // #endregion
 
+// #region 公开审核
+const publicReviewDialogVisible = ref<boolean>(false)
+const publicReviewFormRef = ref<FormInstance | null>(null)
+const publicReviewData = reactive({
+  id: 0 as number,
+  public_status: "APPROVED" as "APPROVED" | "REJECTED",
+  public_review_comments: "" as string
+})
+
+function handleApplyPublic(row: SubjectData) {
+  ElMessageBox.confirm(`确定要申请公开课题：${row.title}？`, "提示", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning"
+  }).then(() => {
+    loading.value = true
+    applyPublicSubject(row.id)
+      .then(() => {
+        ElMessage.success("申请成功")
+        getSubjectData()
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  })
+}
+
+function handlePublicReview(row: SubjectData) {
+  publicReviewDialogVisible.value = true
+  publicReviewData.id = row.id
+}
+
+function submitPublicReview() {
+  publicReviewFormRef.value?.validate((valid) => {
+    if (!valid) {
+      ElMessage.error("表单校验不通过")
+      return
+    }
+    loading.value = true
+    reviewPublicSubject(publicReviewData.id, {
+      public_status: publicReviewData.public_status,
+      public_review_comments: publicReviewData.public_review_comments
+    })
+      .then(() => {
+        ElMessage.success("审核成功")
+        publicReviewDialogVisible.value = false
+        getSubjectData()
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  })
+}
+// #endregion
+
 // 监听分页参数的变化
 watch([() => paginationData.currentPage, () => paginationData.pageSize], getSubjectData, { immediate: true })
 onMounted(() => {
@@ -207,8 +264,16 @@ onMounted(() => {
         <el-form-item prop="search" label="课题标题或简介">
           <el-input v-model="searchData.search" placeholder="请输入" />
         </el-form-item>
-        <el-form-item prop="status" label="状态">
+        <el-form-item prop="status" label="审核状态">
           <el-select v-model="searchData.status" placeholder="请选择" clearable style="width: 200px">
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="已通过" value="APPROVED" />
+            <el-option label="已拒绝" value="REJECTED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item prop="public_status" label="公开状态">
+          <el-select v-model="searchData.public_status" placeholder="请选择" clearable style="width: 200px">
+            <el-option label="未申请" value="NOT_APPLIED" />
             <el-option label="待审核" value="PENDING" />
             <el-option label="已通过" value="APPROVED" />
             <el-option label="已拒绝" value="REJECTED" />
@@ -246,7 +311,7 @@ onMounted(() => {
           <el-table-column prop="description" label="课题描述" align="center" />
           <el-table-column prop="creator.name" label="创建人" align="center" />
           <el-table-column prop="max_students" label="最大学生数" align="center" />
-          <el-table-column prop="status_display" label="状态" align="center">
+          <el-table-column prop="status_display" label="审核状态" align="center">
             <template #default="scope">
               <el-tag v-if="scope.row.status === 'APPROVED'" type="success" effect="plain">
                 {{ scope.row.status_display }}
@@ -259,8 +324,24 @@ onMounted(() => {
               </el-tag>
             </template>
           </el-table-column>
+          <el-table-column prop="public_status_display" label="公开状态" align="center">
+            <template #default="scope">
+              <el-tag v-if="scope.row.public_status === 'APPROVED'" type="success" effect="plain">
+                {{ scope.row.public_status_display }}
+              </el-tag>
+              <el-tag v-else-if="scope.row.public_status === 'REJECTED'" type="danger" effect="plain">
+                {{ scope.row.public_status_display }}
+              </el-tag>
+              <el-tag v-else-if="scope.row.public_status === 'PENDING'" type="warning" effect="plain">
+                {{ scope.row.public_status_display }}
+              </el-tag>
+              <el-tag v-else type="info" effect="plain">
+                {{ scope.row.public_status_display }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="created_at" label="创建时间" align="center" />
-          <el-table-column fixed="right" label="操作" width="250" align="center">
+          <el-table-column fixed="right" label="操作" width="350" align="center">
             <template #default="scope">
               <el-button type="primary" text bg size="small" @click="handleViewDetail(scope.row)">
                 查看
@@ -270,6 +351,26 @@ onMounted(() => {
               </el-button>
               <el-button v-if="userRole === 'ADMIN'" type="success" text bg size="small" @click="handleReview(scope.row)">
                 审核
+              </el-button>
+              <el-button
+                v-if="userRole === 'TEACHER' && scope.row.status === 'APPROVED' && scope.row.public_status === 'NOT_APPLIED'"
+                type="primary"
+                text
+                bg
+                size="small"
+                @click="handleApplyPublic(scope.row)"
+              >
+                申请公开
+              </el-button>
+              <el-button
+                v-if="userRole === 'ADMIN' && scope.row.public_status === 'PENDING'"
+                type="success"
+                text
+                bg
+                size="small"
+                @click="handlePublicReview(scope.row)"
+              >
+                审核公开
               </el-button>
               <el-button v-if="['ADMIN', 'TEACHER'].includes(userRole)" type="danger" text bg size="small" @click="handleDelete(scope.row)">
                 删除
@@ -351,6 +452,29 @@ onMounted(() => {
           取消
         </el-button>
         <el-button type="primary" :loading="loading" @click="submitReview">
+          确认
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 公开审核对话框 -->
+    <el-dialog v-model="publicReviewDialogVisible" title="公开审核" width="50%">
+      <el-form ref="publicReviewFormRef" :model="publicReviewData" label-width="100px" label-position="left">
+        <el-form-item prop="public_status" label="审核结果">
+          <el-radio-group v-model="publicReviewData.public_status">
+            <el-radio label="APPROVED">通过</el-radio>
+            <el-radio label="REJECTED">拒绝</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item prop="public_review_comments" label="审核意见">
+          <el-input v-model="publicReviewData.public_review_comments" type="textarea" :rows="4" placeholder="请输入审核意见" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="publicReviewDialogVisible = false">
+          取消
+        </el-button>
+        <el-button type="primary" :loading="loading" @click="submitPublicReview">
           确认
         </el-button>
       </template>

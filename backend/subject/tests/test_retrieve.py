@@ -159,11 +159,13 @@ class SubjectRetrieveTestCase(APITestCase):
             self.assertEqual(response.data["data"]["review_comments"], subject.review_comments)
 
     def test_teacher_can_view_approved_subjects(self):
-        """教师可以查看已批准的课题"""
+        """教师可以查看已公开的课题"""
         self.create_subjects(1, self.teacher, "APPROVED")
         self.create_subjects(1, self.teacher2, "APPROVED")
         self.create_subjects(1, self.admin, "APPROVED")
         for subject in Subject.objects.all():
+            subject.public_status = "APPROVED"
+            subject.save()
             response = self.client.get(
                 f"{self.url}{subject.id}/",
                 HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
@@ -179,11 +181,13 @@ class SubjectRetrieveTestCase(APITestCase):
             self.assertEqual(response.data["data"]["review_comments"], subject.review_comments)
             
     def test_student_can_view_approved_subjects(self):
-        """学生可以查看已批准的课题"""
+        """学生可以查看已公开的课题"""
         self.create_subjects(1, self.teacher, "APPROVED")
         self.create_subjects(1, self.teacher2, "APPROVED")
         self.create_subjects(1, self.admin, "APPROVED")
         for subject in Subject.objects.all():
+            subject.public_status = "APPROVED"
+            subject.save()
             response = self.client.get(
                 f"{self.url}{subject.id}/",
                 HTTP_AUTHORIZATION=f"Bearer {self.student_token}"

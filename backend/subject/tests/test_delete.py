@@ -163,7 +163,7 @@ class SubjectDeleteTestCase(APITestCase):
             f"{self.url}{subject.id}/",
             HTTP_AUTHORIZATION=f"Bearer {self.student_token}"
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_teacher_delete_subject(self):
         """教师用户尝试删除自己的课题"""
@@ -183,7 +183,7 @@ class SubjectDeleteTestCase(APITestCase):
             f"{self.url}{subject.id}/",
             HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_admin_delete_subject(self):
         """管理员用户尝试删除课题"""
