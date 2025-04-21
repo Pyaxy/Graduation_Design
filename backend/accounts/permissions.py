@@ -80,6 +80,23 @@ class CanUpdateSubject(permissions.BasePermission):
         if request.user.role == 'TEACHER':
             return obj.creator == request.user
         return False
+    
+class CanApplyPublicSubject(permissions.BasePermission):
+    """检查用户是否可以申请公开课题"""
+    def has_object_permission(self, request, view, obj):
+        # 教师可以申请公开自己创建的课题
+        if request.user.role == 'TEACHER':
+            return obj.creator == request.user
+        # 管理员可以申请公开任何课题
+        if request.user.role == 'ADMIN':
+            return True
+        return False
+    
+class CanReviewPublicSubject(permissions.BasePermission):
+    """检查用户是否可以审核公开课题"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以审核任何公开课题
+        return request.user.role == 'ADMIN'
 # endregion
 
 # region 课程权限

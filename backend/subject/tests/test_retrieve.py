@@ -62,7 +62,7 @@ class SubjectRetrieveTestCase(APITestCase):
         cls.subject_data_list = [{
             "title": f"test_title_{i}",
             "description": f"test_description_{i}",
-            "max_students": i
+            "languages": ["C", "CPP", "JAVA", "PYTHON"]
         } for i in range(1, MAX_SUBJECTS)]  # 修改这里，创建MAX_SUBJECTS个数据
         
         
@@ -93,16 +93,16 @@ class SubjectRetrieveTestCase(APITestCase):
     def create_subjects(self, count=None, creator=None, status="PENDING"):
         """批量创建测试课题"""
         data_to_create = self.subject_data_list[:count] if count else self.subject_data_list
-        subjects = [
-            Subject(
-                title=data["title"],
-                description=data["description"],
-                max_students=data["max_students"],
-                creator=creator,
-                status=status
-            ) for data in data_to_create
-        ]
-        return Subject.objects.bulk_create(subjects)
+        for data in data_to_create:
+            self.client.post(
+                reverse("subject-list"),
+                data={
+                "title": data["title"],
+                "description": data["description"],
+                "languages": data["languages"],
+                },
+                HTTP_AUTHORIZATION=f"Bearer {self.teacher_token if creator == self.teacher else self.admin_token}"
+            )
     
     def create_all_subjects(self):
         """创建所有测试课题"""
@@ -131,7 +131,7 @@ class SubjectRetrieveTestCase(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data["data"]["title"], subject.title)
             self.assertEqual(response.data["data"]["description"], subject.description)
-            self.assertEqual(response.data["data"]["max_students"], subject.max_students)
+            self.assertEqual(response.data["data"]["languages"], subject.languages)
             self.assertEqual(response.data["data"]["creator"]["user_id"], subject.creator.user_id)
             self.assertEqual(response.data["data"]["status"], subject.status)
             self.assertEqual(response.data["data"]["status_display"], subject.get_status_display())
@@ -151,7 +151,7 @@ class SubjectRetrieveTestCase(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data["data"]["title"], subject.title)
             self.assertEqual(response.data["data"]["description"], subject.description)
-            self.assertEqual(response.data["data"]["max_students"], subject.max_students)
+            self.assertEqual(response.data["data"]["languages"], subject.languages)
             self.assertEqual(response.data["data"]["creator"]["user_id"], subject.creator.user_id)
             self.assertEqual(response.data["data"]["status"], subject.status)
             self.assertEqual(response.data["data"]["status_display"], subject.get_status_display())
@@ -159,10 +159,8 @@ class SubjectRetrieveTestCase(APITestCase):
             self.assertEqual(response.data["data"]["review_comments"], subject.review_comments)
 
     def test_teacher_can_view_approved_subjects(self):
-        """教师可以查看已批准的课题"""
+        """教师可以查看自己的课题"""
         self.create_subjects(1, self.teacher, "APPROVED")
-        self.create_subjects(1, self.teacher2, "APPROVED")
-        self.create_subjects(1, self.admin, "APPROVED")
         for subject in Subject.objects.all():
             response = self.client.get(
                 f"{self.url}{subject.id}/",
@@ -171,7 +169,7 @@ class SubjectRetrieveTestCase(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data["data"]["title"], subject.title)
             self.assertEqual(response.data["data"]["description"], subject.description)
-            self.assertEqual(response.data["data"]["max_students"], subject.max_students)
+            self.assertEqual(response.data["data"]["languages"], subject.languages)
             self.assertEqual(response.data["data"]["creator"]["user_id"], subject.creator.user_id)
             self.assertEqual(response.data["data"]["status"], subject.status)
             self.assertEqual(response.data["data"]["status_display"], subject.get_status_display())
@@ -179,7 +177,7 @@ class SubjectRetrieveTestCase(APITestCase):
             self.assertEqual(response.data["data"]["review_comments"], subject.review_comments)
             
     def test_student_can_view_approved_subjects(self):
-        """学生可以查看已批准的课题"""
+        """学生可以无法查看未公开的课题"""
         self.create_subjects(1, self.teacher, "APPROVED")
         self.create_subjects(1, self.teacher2, "APPROVED")
         self.create_subjects(1, self.admin, "APPROVED")
@@ -188,15 +186,8 @@ class SubjectRetrieveTestCase(APITestCase):
                 f"{self.url}{subject.id}/",
                 HTTP_AUTHORIZATION=f"Bearer {self.student_token}"
             )
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertEqual(response.data["data"]["title"], subject.title)
-            self.assertEqual(response.data["data"]["description"], subject.description)
-            self.assertEqual(response.data["data"]["max_students"], subject.max_students)
-            self.assertEqual(response.data["data"]["creator"]["user_id"], subject.creator.user_id)
-            self.assertEqual(response.data["data"]["status"], subject.status)
-            self.assertEqual(response.data["data"]["status_display"], subject.get_status_display())
-            self.assertEqual(response.data["data"]["reviewer"]["user_id"] if response.data["data"]["reviewer"] else None, subject.reviewer.user_id if subject.reviewer else None)
-            self.assertEqual(response.data["data"]["review_comments"], subject.review_comments)
+            self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     # endregion
 
     # region 权限测试
@@ -245,7 +236,7 @@ class SubjectRetrieveTestCase(APITestCase):
             data={
                 "title": "test_title",
                 "description": "test_description",
-                "max_students": 10,
+                "languages": ["C", "CPP", "JAVA", "PYTHON"],
                 "description_file": file
             },
             HTTP_AUTHORIZATION=f"Bearer {self.admin_token}"
@@ -263,7 +254,7 @@ class SubjectRetrieveTestCase(APITestCase):
                 self.assertIn(subject.description_file.url, response.data["data"]["description_file"])
             else:
                 self.assertEqual(response.data["data"]["description_file"], None)
-            self.assertEqual(response.data["data"]["max_students"], subject.max_students)
+            self.assertEqual(response.data["data"]["languages"], subject.languages)
             self.assertEqual(response.data["data"]["creator"]["user_id"], subject.creator.user_id)
             self.assertEqual(response.data["data"]["creator"]["name"], subject.creator.name)
             self.assertEqual(response.data["data"]["creator"]["role"], subject.creator.role)

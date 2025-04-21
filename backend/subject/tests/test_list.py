@@ -60,7 +60,7 @@ class SubjectListTestCase(APITestCase):
         cls.subject_data_list = [{
             "title": f"test_title_{i}",
             "description": f"test_description_{i}",
-            "max_students": i
+            "languages": ["C", "CPP", "PYTHON", "JAVA"]
         } for i in range(1, MAX_SUBJECTS)]  # 修改这里，创建MAX_SUBJECTS个数据
         
         print("-----测试数据准备完成-----\n")
@@ -93,7 +93,7 @@ class SubjectListTestCase(APITestCase):
             Subject(
                 title=data["title"],
                 description=data["description"],
-                max_students=data["max_students"],
+                languages=data["languages"],
                 creator=creator,
                 status=status
             ) for data in data_to_create
@@ -124,7 +124,7 @@ class SubjectListTestCase(APITestCase):
         print("-----教师访问时能正确返回数据列表测试结束-----") 
 
     def test_subject_list_with_student_approved_subjects(self):
-        """测试学生访问时能正确返回数据列表"""
+        """测试学生访问时能正确返回数据列表，但是只能看到已公开的课题"""
         print("-----正在测试学生访问时能正确返回数据列表-----")
         # 创建5个测试课题
         created_subjects = self.create_subjects(5, creator=self.teacher, status="APPROVED")
@@ -136,8 +136,8 @@ class SubjectListTestCase(APITestCase):
             }
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['data']['count'], 5)
-        self.assertEqual(len(response.data['data']['results']), 5)
+        self.assertEqual(response.data['data']['count'], 0)
+        self.assertEqual(len(response.data['data']['results']), 0)
 
         # 是否有message和data
         self.assertIn("message", response.data)
@@ -641,6 +641,44 @@ class SubjectListTestCase(APITestCase):
         self.assertIn("message", response.data)
         self.assertIn("data", response.data)
         print("-----教师访问时，搜索课题时，状态和课题同时不存在时能正确返回空列表测试结束-----")
+
+    def test_subject_list_with_teacher_search_by_language(self):
+        """测试教师搜索课题时，能正确返回数据"""
+        created_subjects = self.create_subjects(11, creator=self.teacher, status="APPROVED")
+        response = self.client.get(
+            f"{self.url}?languages=C",
+            headers={
+                "Authorization": f"Bearer {self.teacher_token}"
+            }
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['data']['count'], 11)
+        self.assertEqual(len(response.data['data']['results']), 10)
+        # 是否有message和data
+        self.assertIn("message", response.data)
+        self.assertIn("data", response.data)
+        print("-----教师搜索课题时，能正确返回数据测试结束-----")
+
+    def test_subject_list_with_teacher_search_by_mix_language(self):
+        """测试教师搜索课题时，能正确返回数据"""
+        created_subjects = self.create_subjects(11, creator=self.teacher, status="APPROVED")
+        # 修改一个课题的语言，使其只包含 C 和 CPP
+        subject = Subject.objects.first()
+        subject.languages = ["C", "CPP"]
+        subject.save()
+        response = self.client.get(
+            f"{self.url}?languages=JAVA",
+            headers={
+                "Authorization": f"Bearer {self.teacher_token}"
+            }
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['data']['count'], 10)
+        self.assertEqual(len(response.data['data']['results']), 10)
+        # 是否有message和data
+        self.assertIn("message", response.data)
+        self.assertIn("data", response.data)
+        print("-----教师搜索课题时，能正确返回数据测试结束-----")
     # endregion
 
     # region 测试权限
@@ -653,7 +691,7 @@ class SubjectListTestCase(APITestCase):
         self.assertIn("data", response.data)
 
     def test_subject_list_with_student_only_see_approved_subjects(self):
-        """测试学生访问时，只能看到已批准的课题"""
+        """测试学生访问时，只能看到已公开的课题，不能看到未公开的课题"""
         created_subjects = self.create_subjects(11, creator=self.teacher, status="APPROVED")
         created_subjects = self.create_subjects(11, creator=self.teacher, status="PENDING")
         response = self.client.get(
@@ -663,11 +701,8 @@ class SubjectListTestCase(APITestCase):
             }
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['data']['count'], 11)
-        self.assertEqual(len(response.data['data']['results']), 10)
-        # 课题列表中只有已批准的课题
-        for subject in response.data['data']['results']:
-            self.assertEqual(subject['status'], "APPROVED")
+        self.assertEqual(response.data['data']['count'], 0)
+        self.assertEqual(len(response.data['data']['results']), 0)
         # 是否有message和data
         self.assertIn("message", response.data)
         self.assertIn("data", response.data)
@@ -715,8 +750,8 @@ class SubjectListTestCase(APITestCase):
             }
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['data']['count'], 1)
-        self.assertEqual(len(response.data['data']['results']), 1)
+        self.assertEqual(response.data['data']['count'], 0)
+        self.assertEqual(len(response.data['data']['results']), 0)
         # 是否有message和data
         self.assertIn("message", response.data)
         self.assertIn("data", response.data)
@@ -756,7 +791,7 @@ class SubjectListTestCase(APITestCase):
         self.assertIn("data", response.data)
 
     def test_subject_list_with_teacher_onlu_see_his_subjects_and_approved_subjects(self):
-        """测试教师只能看到自己的课题和已批准的课题"""
+        """测试教师只能看到自己的课题"""
         # 创建测试数据
         # 1. 当前教师创建的已批准课题
         created_subjects = self.create_subjects(5, creator=self.teacher, status="APPROVED")
@@ -775,7 +810,7 @@ class SubjectListTestCase(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # 应该看到：自己创建的所有课题(10个) + 其他教师创建的已批准课题(5个) = 15个
-        self.assertEqual(response.data['data']['count'], 15)
+        self.assertEqual(response.data['data']['count'], 10)
         self.assertEqual(len(response.data['data']['results']), 10)  # 第一页10个
         
         # 验证结果中的课题都符合条件：要么是自己创建的，要么是已批准的
@@ -808,8 +843,8 @@ class SubjectListTestCase(APITestCase):
             }
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['data']['count'], 2)
-        self.assertEqual(len(response.data['data']['results']), 2)
+        self.assertEqual(response.data['data']['count'], 1)
+        self.assertEqual(len(response.data['data']['results']), 1)
         # 是否有message和data
         self.assertIn("message", response.data)
         self.assertIn("data", response.data)
