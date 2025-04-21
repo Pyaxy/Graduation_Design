@@ -1,4 +1,4 @@
-import type { CreateOrUpdateSubjectRequestData, SubjectData, SubjectDetailResponse, SubjectListResponse } from "./type"
+import type { GetPublicSubjectListRequestData, GetPublicSubjectListResponseData, PublicSubjectDetailResponseData, SubjectData, SubjectDetailResponse, SubjectListResponse } from "./type"
 import { request } from "@/http/axios"
 
 export function getSubjectList(params: { page?: number, page_size?: number }) {
@@ -71,5 +71,20 @@ export function reviewPublicSubject(id: number, data: {
     url: `/subjects/${id}/review-public/`,
     method: "post",
     data
+  })
+}
+
+export function getPublicSubjectList(data: GetPublicSubjectListRequestData) {
+  return request<GetPublicSubjectListResponseData>({
+    url: "/public-subjects/",
+    method: "get",
+    params: data
+  })
+}
+
+export function getPublicSubjectDetail(id: number) {
+  return request<PublicSubjectDetailResponseData>({
+    url: `/public-subjects/${id}/`,
+    method: "get"
   })
 }

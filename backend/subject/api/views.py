@@ -16,6 +16,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework import serializers
 from django.core.files.base import ContentFile
 import os
+from django_filters import FilterSet, CharFilter
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,31 @@ class CustomPagination(PageNumberPagination):
     max_page_size = 100
 # endregion
 
+class SubjectFilter(FilterSet):
+    languages = CharFilter(method='filter_languages', required=False)
+
+    def filter_languages(self, queryset, name, value):
+        if not value:
+            return queryset
+        languages = [lang.strip() for lang in value.split(',')]
+        return queryset.filter(languages__contains=languages)
+
+    class Meta:
+        model = Subject
+        fields = ['status', 'public_status', 'languages']
+
+class PublicSubjectFilter(FilterSet):
+    languages = CharFilter(method='filter_languages', required=False)
+
+    def filter_languages(self, queryset, name, value):
+        if not value:
+            return queryset
+        languages = [lang.strip() for lang in value.split(',')]
+        return queryset.filter(languages__contains=languages)
+
+    class Meta:
+        model = PublicSubject
+        fields = ['languages']
 
 # region 课题视图集
 class SubjectViewSet(viewsets.ModelViewSet):
@@ -35,7 +61,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'public_status']
+    filterset_class = SubjectFilter
     search_fields = ['title', 'description']
     search_param = 'search'  # 指定搜索参数名为 search
     ordering_fields = ['created_at', 'updated_at']
@@ -78,20 +104,15 @@ class SubjectViewSet(viewsets.ModelViewSet):
     # region 查询集
     def get_queryset(self):
         """根据用户角色过滤课题"""
-        user = self.request.user
         queryset = Subject.objects.all()
-        
-        # 根据用户角色过滤数据
+        user = self.request.user
         if user.is_anonymous:
             return queryset.none()
         elif user.role == 'STUDENT':
-            # 学生只能看到已审核通过且已公开的课题
             return queryset.filter(Q(status='APPROVED') & Q(public_status='APPROVED'))
         elif user.role == 'TEACHER':
-            # 教师可以看到自己创建的课题和已审核通过的公开课题
             return queryset.filter(Q(creator=user) | (Q(status='APPROVED') & Q(public_status='APPROVED')))
         elif user.role == 'ADMIN':
-            # 管理员可以看到所有课题
             return queryset
         return queryset.none()
     # endregion
@@ -245,6 +266,7 @@ class PublicSubjectViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = PublicSubject.objects.all()
     serializer_class = PublicSubjectSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = PublicSubjectFilter
     search_fields = ['title', 'description']
     ordering_fields = ['created_at']
     ordering = ['-created_at']

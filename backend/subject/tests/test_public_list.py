@@ -746,6 +746,76 @@ class PublicSubjectTestCase(APITestCase):
         self.assertIn("message", response.data)
         self.assertIn("data", response.data)
 
+    def test_public_subject_list_with_teacher_search_by_language(self):
+        """测试教师搜索课题时，能正确返回数据"""
+        created_subjects = self.create_subjects(11, token=self.teacher_token)
+        for subject in Subject.objects.all():
+            self.review_subjects(subject.id, "APPROVED")
+            self.apply_public(subject.id, token=self.teacher_token)
+            self.review_public(subject.id, token=self.admin_token)
+        
+        response = self.client.get(
+            f"{self.url}?languages=C",
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["data"]["count"], 11)
+        self.assertEqual(len(response.data["data"]["results"]), 10)
+
+        # 检查message和data
+        self.assertIn("message", response.data)
+        self.assertIn("data", response.data)
+    
+    def test_public_subject_list_with_teacher_search_by_language_not_exist(self):
+        """测试教师搜索课题时，课题不存在时，能正确返回空列表"""
+        response = self.client.post(
+            reverse("subject-list"),
+            data={
+                "title": "test_title",
+                "description": "test_description",
+                "languages": ["C"]
+            },
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        subject = Subject.objects.first()
+        self.review_subjects(subject.id, "APPROVED")
+        self.apply_public(subject.id, token=self.teacher_token)
+        self.review_public(subject.id, token=self.admin_token)
+
+        response = self.client.get(
+            f"{self.url}?languages=PYTHON",
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["data"]["count"], 0)
+        self.assertEqual(len(response.data["data"]["results"]), 0)
+        
+        # 检查message和data
+        self.assertIn("message", response.data)
+        self.assertIn("data", response.data)
+
+    def test_public_subject_list_with_teacher_search_by_mix_language(self):
+        """测试教师搜索课题时，能正确返回数据"""
+        created_subjects = self.create_subjects(11, token=self.teacher_token)
+        for subject in Subject.objects.all():
+            self.review_subjects(subject.id, "APPROVED")
+            self.apply_public(subject.id, token=self.teacher_token)
+            self.review_public(subject.id, token=self.admin_token)
+
+        response = self.client.get(
+            f"{self.url}?languages=C,CPP,JAVA,PYTHON",
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["data"]["count"], 11)
+        self.assertEqual(len(response.data["data"]["results"]), 10)
+
+        # 检查message和data
+        self.assertIn("message", response.data)
+        self.assertIn("data", response.data)
+        
+
     def test_public_subject_list_with_amdin_see_all_subjects(self):
         """测试管理员可以查看所有已公开的课题"""
         # 1. 当前教师和另外一名教师创建的已公开课题

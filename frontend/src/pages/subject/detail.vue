@@ -1,8 +1,10 @@
 <script lang="ts" setup>
+import { useUserStore } from "@/pinia/stores/user"
 import { ArrowLeft } from "@element-plus/icons-vue"
-import { onMounted, ref } from "vue"
+import { ElMessage } from "element-plus"
+import { computed, onMounted, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { getSubjectDetail } from "./apis"
+import { getPublicSubjectDetail, getSubjectDetail } from "./apis"
 
 defineOptions({
   name: "SubjectDetail"
@@ -12,6 +14,10 @@ const route = useRoute()
 const router = useRouter()
 const loading = ref<boolean>(false)
 const subjectDetail = ref<any>(null)
+const userStore = useUserStore()
+const { role: userRole } = storeToRefs(userStore)
+
+const isPublic = computed(() => route.query.isPublic === "true")
 
 const languageOptions = [
   { label: "Python", value: "PYTHON" },
@@ -23,6 +29,7 @@ const languageOptions = [
 // 获取课题详情
 function getDetail() {
   const id = route.params.id
+
   if (!id) {
     ElMessage.error("课题ID不存在")
     router.push("/code_week/subject-list")
@@ -30,17 +37,31 @@ function getDetail() {
   }
 
   loading.value = true
-  getSubjectDetail(Number(id))
-    .then(({ data }) => {
-      subjectDetail.value = data
-    })
-    .catch(() => {
-      ElMessage.error("获取课题详情失败")
-      router.push("/code_week/subject-list")
-    })
-    .finally(() => {
-      loading.value = false
-    })
+  if (isPublic) {
+    getPublicSubjectDetail(Number(id))
+      .then(({ data }) => {
+        subjectDetail.value = data
+      })
+      .catch(() => {
+        ElMessage.error("获取课题详情失败")
+        router.push("/code_week/subject-list")
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  } else {
+    getSubjectDetail(Number(id))
+      .then(({ data }) => {
+        subjectDetail.value = data
+      })
+      .catch(() => {
+        ElMessage.error("获取课题详情失败")
+        router.push("/code_week/subject-list")
+      })
+      .finally(() => {
+        loading.value = false
+      })
+  }
 }
 
 // 返回列表页
@@ -100,79 +121,83 @@ onMounted(() => {
               </el-tag>
             </div>
           </el-descriptions-item>
-          <el-descriptions-item label="审核状态">
-            <el-tag
-              v-if="subjectDetail?.status === 'APPROVED'"
-              type="success"
-              effect="plain"
-            >
-              {{ subjectDetail?.status_display }}
-            </el-tag>
-            <el-tag
-              v-else-if="subjectDetail?.status === 'REJECTED'"
-              type="danger"
-              effect="plain"
-            >
-              {{ subjectDetail?.status_display }}
-            </el-tag>
-            <el-tag v-else type="warning" effect="plain">
-              {{ subjectDetail?.status_display }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="公开状态">
-            <el-tag
-              v-if="subjectDetail?.public_status === 'APPROVED'"
-              type="success"
-              effect="plain"
-            >
-              {{ subjectDetail?.public_status_display }}
-            </el-tag>
-            <el-tag
-              v-else-if="subjectDetail?.public_status === 'REJECTED'"
-              type="danger"
-              effect="plain"
-            >
-              {{ subjectDetail?.public_status_display }}
-            </el-tag>
-            <el-tag
-              v-else-if="subjectDetail?.public_status === 'PENDING'"
-              type="warning"
-              effect="plain"
-            >
-              {{ subjectDetail?.public_status_display }}
-            </el-tag>
-            <el-tag v-else type="info" effect="plain">
-              {{ subjectDetail?.public_status_display }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="审核人">
-            <div class="user-info">
-              <span>{{ subjectDetail?.reviewer?.name || "无" }}</span>
-              <el-tag v-if="subjectDetail?.reviewer" size="small" class="ml-2">
-                {{ subjectDetail?.reviewer?.role_display }}
+          <template v-if="!isPublic">
+            <el-descriptions-item label="审核状态">
+              <el-tag
+                v-if="subjectDetail?.status === 'APPROVED'"
+                type="success"
+                effect="plain"
+              >
+                {{ subjectDetail?.status_display }}
               </el-tag>
-            </div>
-          </el-descriptions-item>
-          <el-descriptions-item label="审核意见">
-            {{ subjectDetail?.review_comments || "无" }}
-          </el-descriptions-item>
-          <el-descriptions-item label="公开审核人">
-            <div class="user-info">
-              <span>{{ subjectDetail?.public_reviewer?.name || "无" }}</span>
-              <el-tag v-if="subjectDetail?.public_reviewer" size="small" class="ml-2">
-                {{ subjectDetail?.public_reviewer?.role_display }}
+              <el-tag
+                v-else-if="subjectDetail?.status === 'REJECTED'"
+                type="danger"
+                effect="plain"
+              >
+                {{ subjectDetail?.status_display }}
               </el-tag>
-            </div>
-          </el-descriptions-item>
-          <el-descriptions-item label="公开审核意见">
-            {{ subjectDetail?.public_review_comments || "无" }}
-          </el-descriptions-item>
+              <el-tag v-else type="warning" effect="plain">
+                {{ subjectDetail?.status_display }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="公开状态">
+              <el-tag
+                v-if="subjectDetail?.public_status === 'APPROVED'"
+                type="success"
+                effect="plain"
+              >
+                {{ subjectDetail?.public_status_display }}
+              </el-tag>
+              <el-tag
+                v-else-if="subjectDetail?.public_status === 'REJECTED'"
+                type="danger"
+                effect="plain"
+              >
+                {{ subjectDetail?.public_status_display }}
+              </el-tag>
+              <el-tag
+                v-else-if="subjectDetail?.public_status === 'PENDING'"
+                type="warning"
+                effect="plain"
+              >
+                {{ subjectDetail?.public_status_display }}
+              </el-tag>
+              <el-tag v-else type="info" effect="plain">
+                {{ subjectDetail?.public_status_display }}
+              </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="审核人">
+              <div class="user-info">
+                <span>{{ subjectDetail?.reviewer?.name || "无" }}</span>
+                <el-tag v-if="subjectDetail?.reviewer" size="small" class="ml-2">
+                  {{ subjectDetail?.reviewer?.role_display }}
+                </el-tag>
+              </div>
+            </el-descriptions-item>
+            <el-descriptions-item label="审核意见">
+              {{ subjectDetail?.review_comments || "无" }}
+            </el-descriptions-item>
+            <el-descriptions-item label="公开审核人">
+              <div class="user-info">
+                <span>{{ subjectDetail?.public_reviewer?.name || "无" }}</span>
+                <el-tag v-if="subjectDetail?.public_reviewer" size="small" class="ml-2">
+                  {{ subjectDetail?.public_reviewer?.role_display }}
+                </el-tag>
+              </div>
+            </el-descriptions-item>
+            <el-descriptions-item label="公开审核意见">
+              {{ subjectDetail?.public_review_comments || "无" }}
+            </el-descriptions-item>
+          </template>
           <el-descriptions-item label="创建时间">
             {{ subjectDetail?.created_at }}
           </el-descriptions-item>
-          <el-descriptions-item label="更新时间">
-            {{ subjectDetail?.updated_at }}
-          </el-descriptions-item>
+          <template v-if="!isPublic">
+            <el-descriptions-item label="更新时间">
+              {{ subjectDetail?.updated_at }}
+            </el-descriptions-item>
+          </template>
         </el-descriptions>
       </div>
     </el-card>

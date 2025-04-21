@@ -70,3 +70,38 @@ export interface SubjectDetailResponse {
   data: SubjectData
   message: string
 }
+
+export interface PublicSubjectData {
+  id: number
+  title: string
+  description: string
+  creator: {
+    user_id: string
+    name: string
+    role: string
+    role_display: string
+  }
+  description_file: string | null
+  description_file_url: string | null
+  languages: string[]
+  created_at: string
+  version: number
+  original_subject: number
+}
+
+export interface GetPublicSubjectListRequestData {
+  page?: number
+  page_size?: number
+  search?: string
+  languages?: string
+}
+
+export interface GetPublicSubjectListResponseData {
+  count: number
+  results: PublicSubjectData[]
+}
+
+export interface PublicSubjectDetailResponseData {
+  data: PublicSubjectData
+  message: string
+}
