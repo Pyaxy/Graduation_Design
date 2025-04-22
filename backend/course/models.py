@@ -82,7 +82,7 @@ class Group(models.Model):
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        """重写delete方法，在删除时自动删除小组"""
+        """重写delete方法，在删除后自动更新小组名称"""
         # 获取小组对应的课程
         course = self.course
         # 删除小组

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from ..models import Course, Group
 from accounts.models import User
+from django.http import Http404
 
 # region 用户序列化器
 class UserSerializer(serializers.ModelSerializer):
@@ -117,6 +118,8 @@ class LeaveCourseSerializer(serializers.Serializer):
     # region 小组通用序列化器
 class GroupSerializer(serializers.ModelSerializer):
     '''小组序列化器'''
+    creator = UserSerializer(read_only=True)
+    students = UserSerializer(many=True, read_only=True)
     class Meta:
         model = Group
         fields = ['id', 'name', 'course', 'students', 'creator', 'created_at', 'updated_at']
@@ -128,13 +131,10 @@ class GroupSerializer(serializers.ModelSerializer):
     # region 小组创建序列化器
 class GroupCreateSerializer(serializers.ModelSerializer):
     '''小组创建序列化器'''
-    course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all())
+    course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all(), required=True)
     class Meta:
         model = Group
         fields = ['course']
-        extra_kwargs = {
-            'course': {'required': True}
-        }
     
     def create(self, validated_data):
         '''创建小组'''
@@ -147,4 +147,28 @@ class GroupCreateSerializer(serializers.ModelSerializer):
         return group
     # endregion
 
+    # region 退出小组序列化器
+class LeaveGroupSerializer(serializers.Serializer):
+    """退出小组序列化器"""
+    student_user_id = serializers.CharField(required=True)
+
+    class Meta:
+        model = Group
+        fields = ['student_user_id']
+        read_only_fields = ['student_user_id']
+
+    def validate_student_user_id(self, value):
+        '''验证学生用户ID'''
+        if not User.objects.filter(user_id=value).exists():
+            raise Http404("学生用户ID不存在")
+        return value
+    # endregion
+
+    # region 小组列表序列化器
+class GroupListSerializer(serializers.ModelSerializer):
+    '''小组列表序列化器'''
+    class Meta:
+        model = Group
+        fields = ['id', 'name', 'course', 'students', 'creator', 'created_at', 'updated_at']
+    # endregion
 # endregion
