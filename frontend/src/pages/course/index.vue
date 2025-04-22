@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { FormInstance, FormRules } from "element-plus"
-import type { CreateOrUpdateCourseRequestData, CourseData } from "./apis/type"
+import type { CourseData, CreateOrUpdateCourseRequestData } from "./apis/type"
 import { useUserStore } from "@/pinia/stores/user"
 import { usePagination } from "@@/composables/usePagination"
 import { CirclePlus, Delete, Download, Refresh, RefreshRight, Search } from "@element-plus/icons-vue"
@@ -33,7 +33,9 @@ const DEFAULT_FORM_DATA: CreateOrUpdateCourseRequestData = {
   name: "",
   description: "",
   start_date: "",
-  end_date: ""
+  end_date: "",
+  max_group_size: 0,
+  min_group_size: 0
 }
 const dialogVisible = ref<boolean>(false)
 const formRef = ref<FormInstance | null>(null)
@@ -42,7 +44,9 @@ const formRules: FormRules<CreateOrUpdateCourseRequestData> = {
   name: [{ required: true, trigger: "blur", message: "请输入课程名称" }],
   description: [],
   start_date: [{ required: true, trigger: "blur", message: "请选择开始日期" }],
-  end_date: [{ required: true, trigger: "blur", message: "请选择结束日期" }]
+  end_date: [{ required: true, trigger: "blur", message: "请选择结束日期" }],
+  max_group_size: [{ required: true, trigger: "blur", message: "请输入最大小组人数" }],
+  min_group_size: [{ required: true, trigger: "blur", message: "请输入最小小组人数" }]
 }
 
 function handleCreateOrUpdate() {
@@ -109,7 +113,9 @@ function handleUpdate(row: CourseData) {
     name: row.name,
     description: row.description,
     start_date: row.start_date,
-    end_date: row.end_date
+    end_date: row.end_date,
+    max_group_size: row.max_group_size,
+    min_group_size: row.min_group_size
   })
 }
 // #endregion
@@ -329,6 +335,12 @@ watch([() => paginationData.currentPage, () => paginationData.pageSize], getCour
             format="YYYY-MM-DD"
             value-format="YYYY-MM-DD"
           />
+        </el-form-item>
+        <el-form-item v-if="formData.id === undefined" prop="max_group_size" label="最大小组人数">
+          <el-input-number v-model="formData.max_group_size" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item v-if="formData.id === undefined" prop="min_group_size" label="最小小组人数">
+          <el-input-number v-model="formData.min_group_size" placeholder="请输入" />
         </el-form-item>
       </el-form>
       <template #footer>

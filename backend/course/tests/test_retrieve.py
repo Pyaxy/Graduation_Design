@@ -65,7 +65,9 @@ class CourseRetrieveTestCase(APITestCase):
         # 准备测试课程数据
         cls.course_data_list = [{
             "name": f"test_name_{i}",
-            "description": f"test_description_{i}"
+            "description": f"test_description_{i}",
+            "max_group_size": 3,
+            "min_group_size": 1
         } for i in range(1, MAX_COURSES + 1)]
         
         print("-----测试数据准备完成-----\n")
@@ -116,7 +118,9 @@ class CourseRetrieveTestCase(APITestCase):
                 "name": data["name"],
                 "description": data["description"],
                 "start_date": self.get_day(days=start_delta),
-                "end_date": self.get_day(days=end_delta)
+                "end_date": self.get_day(days=end_delta),
+                "max_group_size": data["max_group_size"],
+                "min_group_size": data["min_group_size"]
                 },
                 HTTP_AUTHORIZATION=f"Bearer {token if token else self.teacher_token}"
             )

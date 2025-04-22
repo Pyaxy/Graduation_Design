@@ -12,9 +12,9 @@ import os
     创建成功后返回的数据格式是否正确
     创建后数据是否正确保存到数据库
 数据验证测试：
-    必填字段（title、description、max_students）缺失时的处理
-    字段类型错误时的处理（比如 max_students 传字符串）
-    字段长度/大小限制（比如 max_students 超出范围）
+    必填字段（title、description、languages）缺失时的处理
+    字段类型错误时的处理（比如 languages 传字符串）
+    字段长度/大小限制（比如 languages 超出范围）
 文件上传测试：
     上传有效的课题文件
     上传无效格式的文件
@@ -109,7 +109,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10
+            "languages": ["C", "CPP", "PYTHON"]
         }
         response = self.client.post(
             self.url,
@@ -126,7 +126,7 @@ class SubjectCreateTestCase(APITestCase):
         subject = Subject.objects.first()
         self.assertEqual(subject.title, "test_title")
         self.assertEqual(subject.description, "test_description")
-        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.languages, ["C", "CPP", "PYTHON"])
         self.assertEqual(subject.creator, self.teacher)
         self.assertEqual(subject.status, "PENDING")
         self.assertIsNotNone(subject.created_at)
@@ -137,7 +137,7 @@ class SubjectCreateTestCase(APITestCase):
         """测试使用无效数据创建课题"""
         data = {
             "description": "test_description",
-            "max_students": 10
+            "languages": ["C", "CPP"]
         }
         response = self.client.post(
             self.url,
@@ -157,7 +157,7 @@ class SubjectCreateTestCase(APITestCase):
         """测试使用无效数据创建课题"""
         data = {
             "title": "test_title",
-            "max_students": 10
+            "languages": ["C", "CPP"]
         }
         response = self.client.post(
             self.url,
@@ -173,7 +173,7 @@ class SubjectCreateTestCase(APITestCase):
         self.assertIn("data", response.data)
         self.assertEqual(response.data["data"], None)
 
-    def test_create_subject_without_max_students(self):
+    def test_create_subject_without_languages(self):
         """测试使用无效数据创建课题"""
         data = {
             "title": "test_title",
@@ -184,19 +184,21 @@ class SubjectCreateTestCase(APITestCase):
             data=data,
             HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
         )
-        # 是否返回201
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # 是否返回400
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         # 是否返回message
         self.assertIn("message", response.data)
+        self.assertIn("languages", response.data["message"])
         # 是否返回data
         self.assertIn("data", response.data)
-        
-    def test_create_subject_with_invalid_max_students(self):
-        """测试使用无效数据创建课题"""
+        self.assertEqual(response.data["data"], None)
+
+    def test_create_subject_with_invalid_languages(self):
+        """测试使用无效的编程语言"""
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": "invalid"
+            "languages": ["INVALID_LANG"]
         }
         response = self.client.post(
             self.url,
@@ -207,7 +209,28 @@ class SubjectCreateTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         # 是否返回message
         self.assertIn("message", response.data)
-        self.assertIn("max_students", response.data["message"])
+        self.assertIn("languages", response.data["message"])
+        # 是否返回data
+        self.assertIn("data", response.data)
+        self.assertEqual(response.data["data"], None)
+
+    def test_create_subject_with_empty_languages(self):
+        """测试使用空的编程语言列表"""
+        data = {
+            "title": "test_title",
+            "description": "test_description",
+            "languages": []
+        }
+        response = self.client.post(
+            self.url,
+            data=data,
+            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+        )
+        # 是否返回400
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # 是否返回message
+        self.assertIn("message", response.data)
+        self.assertIn("languages", response.data["message"])
         # 是否返回data
         self.assertIn("data", response.data)
         self.assertEqual(response.data["data"], None)
@@ -222,7 +245,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10,
+            "languages": ["C", "CPP", "PYTHON"],
             "description_file": test_file
         }
         response = self.client.post(
@@ -242,7 +265,7 @@ class SubjectCreateTestCase(APITestCase):
         subject = Subject.objects.first()
         self.assertEqual(subject.title, "test_title")
         self.assertEqual(subject.description, "test_description")
-        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.languages, ["C", "CPP", "PYTHON"])
         self.assertEqual(subject.creator, self.teacher)
         self.assertEqual(subject.status, "PENDING")
         self.assertIsNotNone(subject.created_at)
@@ -261,7 +284,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10
+            "languages": ["C", "CPP", "PYTHON"]
         }
         response = self.client.post(
             self.url,
@@ -276,7 +299,7 @@ class SubjectCreateTestCase(APITestCase):
         subject = Subject.objects.first()
         self.assertEqual(subject.title, "test_title")
         self.assertEqual(subject.description, "test_description")
-        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.languages, ["C", "CPP", "PYTHON"])
         self.assertEqual(subject.creator, self.teacher)
         self.assertEqual(subject.status, "PENDING")
         self.assertIsNotNone(subject.created_at)
@@ -293,7 +316,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10,
+            "languages": ["C", "CPP", "PYTHON"],
             "description_file": test_file
         }
         response = self.client.post(
@@ -314,7 +337,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10,
+            "languages": ["C", "CPP", "PYTHON"],
             "description_file": test_file
         }
         response = self.client.post(
@@ -346,7 +369,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10,
+            "languages": ["C", "CPP", "PYTHON"],
             "description_file": test_file
         }
         response = self.client.post(
@@ -367,7 +390,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10
+            "languages": ["C", "CPP", "PYTHON"]
         }
         response = self.client.post(
             self.url,
@@ -382,7 +405,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10
+            "languages": ["C", "CPP", "PYTHON"]
         }
         response = self.client.post(
             self.url,
@@ -398,7 +421,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10
+            "languages": ["C", "CPP", "PYTHON"]
         }
         response = self.client.post(
             self.url,
@@ -413,7 +436,7 @@ class SubjectCreateTestCase(APITestCase):
         subject = Subject.objects.first()
         self.assertEqual(subject.title, "test_title")
         self.assertEqual(subject.description, "test_description")
-        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.languages, ["C", "CPP", "PYTHON"])
         self.assertEqual(subject.creator, self.teacher)
         self.assertEqual(subject.status, "PENDING")
         self.assertIsNotNone(subject.created_at)
@@ -423,7 +446,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10,
+            "languages": ["C", "CPP", "PYTHON"],
             "status": "APPROVED"
         }
         response = self.client.post(
@@ -442,7 +465,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10,
+            "languages": ["C", "CPP", "PYTHON"],
             "status": "REJECTED"
         }
         response = self.client.post(
@@ -461,7 +484,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10
+            "languages": ["C", "CPP", "PYTHON"]
         }
         response = self.client.post(
             self.url,
@@ -476,7 +499,7 @@ class SubjectCreateTestCase(APITestCase):
         subject = Subject.objects.first()
         self.assertEqual(subject.title, "test_title")
         self.assertEqual(subject.description, "test_description")
-        self.assertEqual(subject.max_students, 10)
+        self.assertEqual(subject.languages, ["C", "CPP", "PYTHON"])
         self.assertEqual(subject.creator, self.admin)
         self.assertEqual(subject.status, "PENDING")
         self.assertIsNotNone(subject.created_at)
@@ -488,7 +511,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10
+            "languages": ["C", "CPP", "PYTHON"]
         }
         response = self.client.post(
             self.url,
@@ -508,7 +531,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10
+            "languages": ["C", "CPP", "PYTHON"]
         }
         response = self.client.post(
             self.url,
@@ -528,7 +551,7 @@ class SubjectCreateTestCase(APITestCase):
         data = {
             "title": "test_title",
             "description": "test_description",
-            "max_students": 10
+            "languages": ["C", "CPP", "PYTHON"]
         }
         response = self.client.post(
             self.url,

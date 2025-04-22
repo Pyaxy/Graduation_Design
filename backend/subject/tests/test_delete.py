@@ -101,7 +101,7 @@ class SubjectDeleteTestCase(APITestCase):
         cls.subject_data_list = [{
             "title": f"test_title_{i}",
             "description": f"test_description_{i}",
-            "max_students": i
+            "languages": ["C", "CPP", "PYTHON"]
         } for i in range(1, MAX_SUBJECTS)]  # 修改这里，创建MAX_SUBJECTS个数据
         
         
@@ -136,7 +136,7 @@ class SubjectDeleteTestCase(APITestCase):
             Subject(
                 title=data["title"],
                 description=data["description"],
-                max_students=data["max_students"],
+                languages=data["languages"],
                 creator=creator,
                 status=status
             ) for data in data_to_create
@@ -163,7 +163,7 @@ class SubjectDeleteTestCase(APITestCase):
             f"{self.url}{subject.id}/",
             HTTP_AUTHORIZATION=f"Bearer {self.student_token}"
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_teacher_delete_subject(self):
         """教师用户尝试删除自己的课题"""
@@ -183,7 +183,7 @@ class SubjectDeleteTestCase(APITestCase):
             f"{self.url}{subject.id}/",
             HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_admin_delete_subject(self):
         """管理员用户尝试删除课题"""

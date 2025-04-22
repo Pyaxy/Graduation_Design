@@ -1,4 +1,4 @@
-import type { CourseDetailResponse, CourseListResponse, GetStudentsResponse, JoinCourseRequestData, LeaveCourseRequestData } from "./type"
+import type { CourseDetailResponse, CourseListResponse, GetGroupsListResponse, GetStudentsResponse, JoinCourseRequestData, LeaveCourseRequestData, LeaveGroupRequestData, CreateGroupRequestData, CreateGroupResponse } from "./type"
 import { request } from "@/http/axios"
 
 // 获取课程列表
@@ -82,5 +82,44 @@ export function getStudents(id: string, params?: {
     url: `/courses/${id}/students/`,
     method: "get",
     params
+  })
+}
+
+// 获取小组列表
+export function getGroupsList(params?: {
+  page: number
+  page_size: number
+  course_id: string
+}) {
+  return request<GetGroupsListResponse>({
+    url: `/groups/`,
+    method: "get",
+    params
+  })
+}
+
+// 加入小组
+export function joinGroup(groupId: string) {
+  return request<GetGroupsListResponse>({
+    url: `/groups/${groupId}/join/`,
+    method: "post"
+  })
+}
+
+// 退出小组
+export function leaveGroup(groupId: string, data: LeaveGroupRequestData) {
+  return request<GetGroupsListResponse>({
+    url: `/groups/${groupId}/leave/`,
+    method: "post",
+    data
+  })
+}
+
+// 创建小组
+export function createGroup(data: CreateGroupRequestData) {
+  return request<CreateGroupResponse>({
+    url: "/groups/",
+    method: "post",
+    data
   })
 }

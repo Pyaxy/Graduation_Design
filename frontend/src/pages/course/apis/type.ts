@@ -43,6 +43,8 @@ export interface CreateOrUpdateCourseRequestData {
   description: string
   start_date: string
   end_date: string
+  max_group_size: number
+  min_group_size: number
 }
 
 export interface CourseListResponse {
@@ -83,5 +85,68 @@ export interface GetStudentsResponse {
       role_display: string
     }[]
   }
+  message: string
+}
+
+// 小组数据
+export interface GroupData {
+  // 小组 ID
+  id: string
+  // 小组名称
+  name: string
+  // 课程
+  course: {
+    id: string
+    name: string
+  }
+  // 创建者
+  creator: {
+    user_id: string
+    name: string
+    role: string
+    role_display: string
+  }
+  // 成员列表
+  students: {
+    user_id: string
+    name: string
+    role: string
+    role_display: string
+  }[]
+  // 创建时间
+  created_at: string
+  // 更新时间
+  updated_at: string
+}
+
+// 获取小组列表的响应数据
+export interface GetGroupsListResponse {
+  data: {
+    count: number
+    next: string | null
+    previous: string | null
+    results: GroupData[]
+  }
+  message: string
+}
+
+// 加入小组的请求数据
+export interface JoinGroupRequestData {
+  group_id: string
+}
+
+// 退出小组的请求数据
+export interface LeaveGroupRequestData {
+  student_user_id: string
+}
+
+// 创建小组的请求数据
+export interface CreateGroupRequestData {
+  course: string
+}
+
+// 创建小组的响应数据
+export interface CreateGroupResponse {
+  data: null
   message: string
 }

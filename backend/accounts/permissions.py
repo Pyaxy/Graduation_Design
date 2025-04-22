@@ -80,6 +80,23 @@ class CanUpdateSubject(permissions.BasePermission):
         if request.user.role == 'TEACHER':
             return obj.creator == request.user
         return False
+    
+class CanApplyPublicSubject(permissions.BasePermission):
+    """检查用户是否可以申请公开课题"""
+    def has_object_permission(self, request, view, obj):
+        # 教师可以申请公开自己创建的课题
+        if request.user.role == 'TEACHER':
+            return obj.creator == request.user
+        # 管理员可以申请公开任何课题
+        if request.user.role == 'ADMIN':
+            return True
+        return False
+    
+class CanReviewPublicSubject(permissions.BasePermission):
+    """检查用户是否可以审核公开课题"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以审核任何公开课题
+        return request.user.role == 'ADMIN'
 # endregion
 
 # region 课程权限
@@ -131,5 +148,29 @@ class CanSeeStudents(permissions.BasePermission):
         # 学生可以查看自己加入的课程的学生列表
         if request.user.role == 'STUDENT':
             return request.user in obj.students.all()
+        return False
+# endregion
+
+# region 小组权限
+class CanJoinGroup(permissions.BasePermission):
+    """检查用户是否可以加入小组"""
+    def has_object_permission(self, request, view, obj):
+        # 学生可以加入小组
+        if request.user.role == 'STUDENT':
+            return True
+        return False
+    
+class CanLeaveGroup(permissions.BasePermission):
+    """检查用户是否可以退出小组"""
+    def has_object_permission(self, request, view, obj):
+        # 学生可以退出自己加入的小组
+        if request.user.role == 'STUDENT':
+            return obj.students.filter(user_id=request.user.user_id).exists()
+        # 老师可以踢出自己课程的所有学生
+        elif request.user.role == 'TEACHER':
+            return True
+        # 管理员可以踢出任何学生
+        if request.user.role == 'ADMIN':
+            return True
         return False
 # endregion
