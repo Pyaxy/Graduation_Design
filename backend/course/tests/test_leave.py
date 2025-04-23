@@ -139,6 +139,7 @@ class CourseLeaveTestCase(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['message'], '退出课程成功')
+        self.assertEqual(Course.objects.all().count(), 1)
         self.assertEqual(Course.objects.first().students.count(), 0)
     
     def test_leave_course_with_teacher(self):

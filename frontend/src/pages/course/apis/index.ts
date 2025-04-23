@@ -1,4 +1,4 @@
-import type { CourseDetailResponse, CourseListResponse, GetGroupsListResponse, GetStudentsResponse, JoinCourseRequestData, LeaveCourseRequestData, LeaveGroupRequestData, CreateGroupRequestData, CreateGroupResponse } from "./type"
+import type { AddSubjectToCourseResponse, CourseDetailResponse, CourseListResponse, CreateGroupRequestData, CreateGroupResponse, GetGroupsListResponse, GetStudentsResponse, JoinCourseRequestData, LeaveCourseRequestData, LeaveGroupRequestData, SubjectListResponse } from "./type"
 import { request } from "@/http/axios"
 
 // 获取课程列表
@@ -121,5 +121,37 @@ export function createGroup(data: CreateGroupRequestData) {
     url: "/groups/",
     method: "post",
     data
+  })
+}
+
+// 添加课题到课程
+export function addSubjectToCourse(courseId: string, data: {
+  subject_ids: string
+  subject_type: "PRIVATE" | "PUBLIC"
+}) {
+  return request<AddSubjectToCourseResponse>({
+    url: `/courses/${courseId}/add_subject/`,
+    method: "post",
+    data
+  })
+}
+
+// 获取课程课题列表
+export function getCourseSubjectList(courseId: string, params: { page: number, page_size: number }) {
+  return request<SubjectListResponse>({
+    url: `/courses/${courseId}/subjects_list/`,
+    method: "get",
+    params
+  })
+}
+
+// 删除课题
+export function deleteSubjectFromCourse(courseId: string, subjectId: string) {
+  return request<SubjectListResponse>({
+    url: `/courses/${courseId}/delete_subject/`,
+    method: "delete",
+    data: {
+      course_subject_id: subjectId
+    }
   })
 }

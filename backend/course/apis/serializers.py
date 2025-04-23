@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models import Course, Group
+from ..models import Course, Group, CourseSubject
 from accounts.models import User
 from django.http import Http404
 from subject.api.serializers import SubjectSerializer, PublicSubjectSerializer
@@ -206,10 +206,15 @@ class SubjectBaseSerializer(serializers.Serializer):
 
 class CourseSubjectSerializer(serializers.Serializer):
     """课程课题序列化器"""
+    id = serializers.UUIDField()
     subject = serializers.SerializerMethodField()
     subject_type = serializers.CharField()
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
+
+    class Meta:
+        model = CourseSubject
+        fields = ['id', 'subject', 'subject_type', 'created_at', 'updated_at']
 
     def get_subject(self, obj):
         """根据课题类型选择不同的序列化器"""
