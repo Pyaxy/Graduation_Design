@@ -11,14 +11,17 @@ import string
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
-from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse, CanLeaveCourse, CanSeeStudents, CanJoinGroup, CanLeaveGroup
+from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse, CanLeaveCourse, CanSeeStudents, CanJoinGroup, CanLeaveGroup, CanAddSubjectToCourse, CanSeeSubjects, CanDeleteSubjectFromCourse
 from CodeCollab.api.decorators import standard_response
-from .serializers import CourseCreateSerializer, GroupSerializer, GroupCreateSerializer, LeaveGroupSerializer
+from .serializers import CourseCreateSerializer, GroupSerializer, GroupCreateSerializer, LeaveGroupSerializer, AddSubjectSerializer, CourseSubjectSerializer, DeleteSubjectSerializer
 from rest_framework.exceptions import ValidationError
 from accounts.models import User
 from django.http import Http404
 from django.db.models import Q
 import logging
+from subject.models import Subject, PublicSubject
+from course.models import CourseSubject
+
 logger = logging.getLogger(__name__)
 # Create your views here.
 
@@ -59,6 +62,12 @@ class CourseViewSet(viewsets.ModelViewSet):
             permission_classes = [IsAuthenticated, CanLeaveCourse]
         elif self.action in ['students']:
             permission_classes = [IsAuthenticated, CanSeeStudents]
+        elif self.action in ['add_subject']:
+            permission_classes = [IsAuthenticated, CanAddSubjectToCourse]
+        elif self.action in ['subjects_list']:
+            permission_classes = [IsAuthenticated, CanSeeSubjects]
+        elif self.action in ['delete_subject']:
+            permission_classes = [IsAuthenticated, CanDeleteSubjectFromCourse]
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
@@ -245,6 +254,183 @@ class CourseViewSet(viewsets.ModelViewSet):
         serializer = UserSerializer(students, many=True)
         return Response(serializer.data)
     # endregion
+
+    # region 添加课题
+    @action(detail=True, methods=['post'])
+    @standard_response("请求成功")
+    def add_subject(self, request, pk=None):
+        """批量添加课题到课程"""
+        """相应格式:
+        {
+            "success": {
+                "count": 1,
+                "ids": [1, 2, 3]
+            },
+            "failed": {
+                "count": 1,
+                "details": [
+                    {
+                        "id": 1,
+                        "reason": "您没有权限添加此课题"
+                    }
+                ]
+            }
+        }
+        """
+        # 获取课程
+        try:
+            course = self.get_object()
+        except Http404:
+            raise Http404("未查询到该课程")
+        
+        # 验证请求参数
+        serializer = AddSubjectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        subject_ids = serializer.validated_data['subject_ids']
+        subject_type = serializer.validated_data['subject_type']
+
+        # 状态验证
+        if course.status == "in_progress":
+            raise ValidationError("课程正在进行中，无法添加课题")
+        if course.status == "completed":
+            raise ValidationError("课程已结束，无法添加课题")
+        
+        # 用于存储成功添加的课题ID
+        success_ids = []
+        # 用于存储失败的课题ID和原因
+        failed_ids = []
+        
+        # 根据课题类型处理课题
+        if subject_type == 'PRIVATE':
+            for subject_id in subject_ids:
+                try:
+                    subject = Subject.objects.get(id=subject_id)
+                    # 只能添加审核通过的课题
+                    if subject.status != 'APPROVED':
+                        failed_ids.append({
+                            'id': subject_id,
+                            'reason': "课题未审核通过"
+                        })
+                        continue
+                    # 只有课题的创建者或者管理员才能添加课题
+                    if subject.creator != request.user and request.user.role != 'ADMIN':
+                        failed_ids.append({
+                            'id': subject_id,
+                            'reason': "您没有权限添加此课题"
+                        })
+                        continue
+                    
+                    # 检查是否已经添加过该课题
+                    if CourseSubject.objects.filter(course=course, private_subject=subject).exists():
+                        failed_ids.append({
+                            'id': subject_id,
+                            'reason': "该课题已经添加到课程中"
+                        })
+                        continue
+                    
+                    # 创建课程课题关联
+                    CourseSubject.objects.create(
+                        course=course,
+                        subject_type='PRIVATE',
+                        private_subject=subject
+                    )
+                    success_ids.append(subject_id)
+                    
+                except Subject.DoesNotExist:
+                    failed_ids.append({
+                        'id': subject_id,
+                        'reason': "课题不存在"
+                    })
+            
+        else:  # PUBLIC
+            for subject_id in subject_ids:
+                try:
+                    subject = PublicSubject.objects.get(id=subject_id)
+                    
+                    # 检查是否已经添加过该课题
+                    if CourseSubject.objects.filter(course=course, public_subject=subject).exists():
+                        failed_ids.append({
+                            'id': subject_id,
+                            'reason': "该课题已经添加到课程中"
+                        })
+                        continue
+                    
+                    # 创建课程课题关联
+                    CourseSubject.objects.create(
+                        course=course,
+                        subject_type='PUBLIC',
+                        public_subject=subject
+                    )
+                    success_ids.append(subject_id)
+                    
+                except PublicSubject.DoesNotExist:
+                    failed_ids.append({
+                        'id': subject_id,
+                        'reason': "公开课题不存在"
+                    })
+        
+        # 构建返回数据
+        response_data = {
+            'success': {
+                'count': len(success_ids),
+                'ids': success_ids
+            },
+            'failed': {
+                'count': len(failed_ids),
+                'details': failed_ids
+            }
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+    # endregion
+
+    # region 获取课程课题列表
+    @action(detail=True, methods=['get'])
+    @standard_response("获取课程课题列表成功")
+    def subjects_list(self, request, pk=None):
+        """获取课程的所有课题"""
+        course = self.get_object()
+        course_subjects = CourseSubject.objects.filter(course=course)
+        
+        # 分页
+        page = self.paginate_queryset(course_subjects)
+        if page is not None:
+            serializer = CourseSubjectSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        
+        # 如果没有分页，返回所有数据
+        serializer = CourseSubjectSerializer(course_subjects, many=True, context={'request': request})
+        return Response(serializer.data)
+    # endregion
+
+    # region 删除课程课题
+    @action(detail=True, methods=['delete'])
+    @standard_response("删除课程课题成功")
+    def delete_subject(self, request, pk=None):
+        """删除课程课题"""
+        try:
+            course = self.get_object()
+        except Http404:
+            raise Http404("未查询到该课程")
+        if course.status == "in_progress":
+            raise ValidationError("课程正在进行中，无法删除课题")
+        if course.status == "completed":
+            raise ValidationError("课程已结束，无法删除课题")
+        # 验证请求参数
+        serializer = DeleteSubjectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        course_subject_id = serializer.validated_data['course_subject_id']
+        
+        try:
+            course_subject = CourseSubject.objects.get(course=course, id=course_subject_id)
+            course_subject.delete()
+            return Response(None, status=status.HTTP_204_NO_CONTENT)
+        except CourseSubject.DoesNotExist:
+            raise Http404("未查询到该课程课题")
+    # endregion
+
+
 
 # endregion
 
@@ -496,7 +682,6 @@ class GroupViewSet(viewsets.ModelViewSet):
         return Response(None, status=status.HTTP_200_OK)
     # endregion
 
-    # TODO: 获取小组列表
     # TODO: 获取小组详情
     # TODO: 更新小组
     # TODO: 删除小组

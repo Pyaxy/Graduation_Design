@@ -149,6 +149,43 @@ class CanSeeStudents(permissions.BasePermission):
         if request.user.role == 'STUDENT':
             return request.user in obj.students.all()
         return False
+    
+class CanAddSubjectToCourse(permissions.BasePermission):
+    """检查用户是否可以添加课题到课程"""
+    
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以添加任何课题到课程
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师可以添加自己创建的课题到课程
+        if request.user.role == 'TEACHER':
+            return obj.teacher == request.user
+        return False
+    
+class CanSeeSubjects(permissions.BasePermission):
+    """检查用户是否可以查看课题列表"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以查看任何课题
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师可以查看自己创建的课题
+        if request.user.role == 'TEACHER':
+            return obj.teacher == request.user
+        # 学生可以查看自己加入的课程的课题列表
+        if request.user.role == 'STUDENT':
+            return request.user in obj.students.all()
+        return False
+    
+class CanDeleteSubjectFromCourse(permissions.BasePermission):
+    """检查用户是否可以删除课程课题"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以删除任何课程课题
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师可以删除自己创建的课程课题
+        if request.user.role == 'TEACHER':
+            return obj.teacher == request.user
+        return False
 # endregion
 
 # region 小组权限
