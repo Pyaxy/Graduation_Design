@@ -1,7 +1,7 @@
 import type { GetPublicSubjectListRequestData, GetPublicSubjectListResponseData, PublicSubjectDetailResponseData, SubjectData, SubjectDetailResponse, SubjectListResponse } from "./type"
 import { request } from "@/http/axios"
 
-export function getSubjectList(params: { page?: number, page_size?: number }) {
+export function getSubjectList(params: { page?: number, page_size?: number, search?: string, status?: string, languages?: string }) {
   return request<SubjectListResponse>({
     url: "/subjects/",
     method: "get",

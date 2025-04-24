@@ -2,6 +2,7 @@ from django.db import models
 from accounts.models import User
 import uuid
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 # region 课程模型
 class Course(models.Model):
@@ -92,4 +93,52 @@ class Group(models.Model):
             group.name = f"{course.name} 小组 {index}"
             group.save(update_fields=['name'])
     
+# endregion
+
+# region 课程课题关联模型
+class CourseSubject(models.Model):
+    """课程课题关联模型"""
+    SUBJECT_TYPE_CHOICES = (
+        ('PRIVATE', '私有课题'),
+        ('PUBLIC', '公开课题'),
+    )
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='course_subjects', verbose_name='课程')
+    subject_type = models.CharField(max_length=10, choices=SUBJECT_TYPE_CHOICES, verbose_name='课题类型')
+    private_subject = models.ForeignKey('subject.Subject', on_delete=models.CASCADE, related_name='course_subjects', verbose_name='私有课题', null=True, blank=True)
+    public_subject = models.ForeignKey('subject.PublicSubject', on_delete=models.CASCADE, related_name='course_subjects', verbose_name='公开课题', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    
+    class Meta:
+        verbose_name = '课程课题'
+        verbose_name_plural = '课程课题'
+        ordering = ['-created_at']
+        unique_together = [
+            ('course', 'private_subject'),
+            ('course', 'public_subject')
+        ]
+    
+    def __str__(self):
+        if self.subject_type == 'PRIVATE':
+            return f"{self.course.name} - {self.private_subject.title}"
+        else:
+            return f"{self.course.name} - {self.public_subject.title}"
+    
+    def clean(self):
+        """验证课题类型和课题ID的对应关系"""
+        if self.subject_type == 'PRIVATE' and not self.private_subject:
+            raise ValidationError("私有课题不能为空")
+        if self.subject_type == 'PUBLIC' and not self.public_subject:
+            raise ValidationError("公开课题不能为空")
+        if self.subject_type == 'PRIVATE' and self.public_subject:
+            raise ValidationError("私有课题不能关联公开课题")
+        if self.subject_type == 'PUBLIC' and self.private_subject:
+            raise ValidationError("公开课题不能关联私有课题")
+    
+    def save(self, *args, **kwargs):
+        """重写save方法，在保存时进行验证"""
+        self.clean()
+        super().save(*args, **kwargs)
 # endregion

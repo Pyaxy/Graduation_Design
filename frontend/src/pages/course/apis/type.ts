@@ -150,3 +150,62 @@ export interface CreateGroupResponse {
   data: null
   message: string
 }
+
+// 课题数据
+export interface SubjectData {
+  id: string
+  title: string
+  description: string
+  description_file: string | null
+  description_file_url: string | null
+  creator: {
+    user_id: string
+    name: string
+    role: string
+    role_display: string
+  }
+  languages: string[]
+  status: "PENDING" | "APPROVED" | "REJECTED"
+  status_display: string
+  is_public: boolean
+  public_status: "NOT_APPLIED" | "PENDING" | "APPROVED" | "REJECTED"
+  public_status_display: string
+  version: number
+  created_at: string
+  updated_at: string
+}
+
+// 获取课题列表的响应数据
+export interface SubjectListResponse {
+  data: {
+    count: number
+    next: string | null
+    previous: string | null
+    results: {
+      id: string
+      subject: SubjectData
+      subject_type: "PRIVATE" | "PUBLIC"
+      created_at: string
+      updated_at: string
+    }[]
+  }
+  message: string
+}
+
+// 添加课题到课程的响应数据
+export interface AddSubjectToCourseResponse {
+  data: {
+    success: {
+      count: number
+      ids: string[]
+    }
+    failed: {
+      count: number
+      details: {
+        id: string
+        reason: string
+      }[]
+    }
+  }
+  message: string
+}

@@ -1,7 +1,9 @@
 from rest_framework import serializers
-from ..models import Course, Group
+from ..models import Course, Group, CourseSubject
 from accounts.models import User
 from django.http import Http404
+from subject.api.serializers import SubjectSerializer, PublicSubjectSerializer
+import uuid
 
 # region 用户序列化器
 class UserSerializer(serializers.ModelSerializer):
@@ -115,6 +117,8 @@ class LeaveCourseSerializer(serializers.Serializer):
 
 # region 小组序列化器
 
+
+
     # region 小组通用序列化器
 class GroupSerializer(serializers.ModelSerializer):
     '''小组序列化器'''
@@ -125,8 +129,6 @@ class GroupSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'course', 'students', 'creator', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at', 'course', 'creator']
     # endregion
-
-
 
     # region 小组创建序列化器
 class GroupCreateSerializer(serializers.ModelSerializer):
@@ -171,4 +173,69 @@ class GroupListSerializer(serializers.ModelSerializer):
         model = Group
         fields = ['id', 'name', 'course', 'students', 'creator', 'created_at', 'updated_at']
     # endregion
+
+
+
+# endregion
+
+
+
+# region 课程的课题序列化器
+class AddSubjectSerializer(serializers.Serializer):
+    """添加课题序列化器"""
+    subject_ids = serializers.CharField(required=True, help_text="课题ID列表，用逗号分隔")
+    subject_type = serializers.ChoiceField(choices=['PRIVATE', 'PUBLIC'], required=True)
+
+    def validate_subject_ids(self, value):
+        """验证subject_ids格式"""
+        try:
+            ids = [int(id.strip()) for id in value.split(',') if id.strip()]
+            if not ids:
+                raise serializers.ValidationError("课题ID列表不能为空")
+            return ids
+        except ValueError:
+            raise serializers.ValidationError("课题ID必须是数字")
+
+class SubjectBaseSerializer(serializers.Serializer):
+    """课题基础序列化器"""
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    description = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+
+class CourseSubjectSerializer(serializers.Serializer):
+    """课程课题序列化器"""
+    id = serializers.UUIDField()
+    subject = serializers.SerializerMethodField()
+    subject_type = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+
+    class Meta:
+        model = CourseSubject
+        fields = ['id', 'subject', 'subject_type', 'created_at', 'updated_at']
+
+    def get_subject(self, obj):
+        """根据课题类型选择不同的序列化器"""
+        if obj.subject_type == 'PRIVATE':
+            return SubjectSerializer(obj.private_subject, context=self.context).data
+        else:
+            return PublicSubjectSerializer(obj.public_subject, context=self.context).data
+
+class DeleteSubjectSerializer(serializers.Serializer):
+    """删除课题序列化器"""
+    course_subject_id = serializers.UUIDField(required=True, help_text="要删除的课程课题ID")
+
+    def validate_course_subject_id(self, value):
+        """验证course_subject_id格式"""
+        try:
+            uuid.UUID(str(value))
+            return value
+        except ValueError:
+            raise serializers.ValidationError("无效的UUID格式")
+
+
+
+
 # endregion
