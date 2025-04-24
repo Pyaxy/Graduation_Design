@@ -21,6 +21,7 @@ class Course(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_started', verbose_name='课程状态')
     max_group_size = models.PositiveIntegerField(verbose_name='最大小组人数', default=3)
     min_group_size = models.PositiveIntegerField(verbose_name='最小小组人数', default=1)
+    max_subject_selections = models.PositiveIntegerField(verbose_name='最大课题选择数', default=3)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     start_date = models.DateField(verbose_name='开始日期')
@@ -136,6 +137,34 @@ class CourseSubject(models.Model):
             raise ValidationError("私有课题不能关联公开课题")
         if self.subject_type == 'PUBLIC' and self.private_subject:
             raise ValidationError("公开课题不能关联私有课题")
+    
+    def save(self, *args, **kwargs):
+        """重写save方法，在保存时进行验证"""
+        self.clean()
+        super().save(*args, **kwargs)
+# endregion
+
+# region 小组选题模型
+class GroupSubject(models.Model):
+    """小组选题模型"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='group_subjects', verbose_name='小组')
+    course_subject = models.ForeignKey(CourseSubject, on_delete=models.CASCADE, related_name='group_subjects', verbose_name='课程课题')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    
+    class Meta:
+        verbose_name = '小组选题'
+        verbose_name_plural = '小组选题'
+        ordering = ['-created_at']
+        unique_together = ['group', 'course_subject']
+    
+    def __str__(self):
+        return f"{self.group.name} - {self.course_subject}"
+    
+    def clean(self):
+        """验证选题是否合法"""
+        pass
     
     def save(self, *args, **kwargs):
         """重写save方法，在保存时进行验证"""

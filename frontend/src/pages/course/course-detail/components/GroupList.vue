@@ -7,6 +7,7 @@ import { ElMessage, ElMessageBox } from "element-plus"
 import { storeToRefs } from "pinia"
 import { ref, reactive, onMounted, watch } from "vue"
 import { createGroup, getGroupsList, joinGroup, leaveGroup } from "../../apis"
+import { useRouter } from "vue-router"
 
 const props = defineProps<{
   courseId: string
@@ -30,6 +31,8 @@ const createGroupDialogVisible = ref(false)
 const createGroupForm = reactive<CreateGroupRequestData>({
   course: props.courseId
 })
+
+const router = useRouter()
 
 // 获取小组列表
 function getGroupsData() {
@@ -147,6 +150,15 @@ function handleCreateGroup() {
     })
 }
 
+function handleViewDetail(groupId: string) {
+  router.push({
+    name: "Group-Detail",
+    params: {
+      courseId: props.courseId,
+      groupId
+    }
+  })
+}
 
 // 监听分页参数的变化
 watch([() => groupPaginationData.currentPage, () => groupPaginationData.pageSize], getGroupsData, { immediate: true })
@@ -210,6 +222,14 @@ defineExpose({
               @click="handleJoinGroup(group)"
             >
               加入小组
+            </el-button>
+            <el-button
+              v-if="group.students.some(student => student.user_id === userStore.user_id)"
+              type="primary"
+              text
+              @click="handleViewDetail(group.id)"
+            >
+              查看详情
             </el-button>
           </div>
         </el-card>

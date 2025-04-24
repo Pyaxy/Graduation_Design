@@ -1,9 +1,11 @@
 from rest_framework import serializers
-from ..models import Course, Group, CourseSubject
+from ..models import Course, Group, CourseSubject, GroupSubject
 from accounts.models import User
 from django.http import Http404
 from subject.api.serializers import SubjectSerializer, PublicSubjectSerializer
 import uuid
+
+
 
 # region 用户序列化器
 class UserSerializer(serializers.ModelSerializer):
@@ -14,7 +16,12 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['user_id', 'name', 'role', 'role_display']
 # endregion
 
+
+
+
 # region 课程序列化器
+
+
 
     # region 课程通用序列化器
 class CourseSerializer(serializers.ModelSerializer):
@@ -27,8 +34,8 @@ class CourseSerializer(serializers.ModelSerializer):
         model = Course
         fields = ['id', 'name', 'description', 'teacher', 'students', 
                  'course_code', 'status', 'current_status', 'created_at', 'updated_at',
-                 'start_date', 'end_date', 'max_group_size', 'min_group_size']
-        read_only_fields = ['id', 'course_code', 'status', 'created_at', 'updated_at', 'teacher', 'max_group_size', 'min_group_size'] 
+                 'start_date', 'end_date', 'max_group_size', 'min_group_size', 'max_subject_selections']
+        read_only_fields = ['id', 'course_code', 'status', 'created_at', 'updated_at', 'teacher', 'max_group_size', 'min_group_size', 'max_subject_selections'] 
 
     def validate(self, data):
         """验证开始时间不得比结束时间迟"""
@@ -56,14 +63,15 @@ class CourseCreateSerializer(serializers.ModelSerializer):
     '''课程创建序列化器'''
     class Meta:
         model = Course
-        fields = ['name', 'description', 'start_date', 'end_date', 'max_group_size', 'min_group_size']
+        fields = ['name', 'description', 'start_date', 'end_date', 'max_group_size', 'min_group_size', 'max_subject_selections']
         extra_kwargs = {
             'name': {'required': True},
             'description': {'required': False},  # 修改为可选
             'start_date': {'required': True},
             'end_date': {'required': True},
             'max_group_size': {'required': True},
-            'min_group_size': {'required': True}
+            'min_group_size': {'required': True},
+            'max_subject_selections': {'required': True}
         }
     
     def validate(self, data):
@@ -113,74 +121,9 @@ class LeaveCourseSerializer(serializers.Serializer):
         return value
     # endregion
 
-# endregion
-
-# region 小组序列化器
 
 
-
-    # region 小组通用序列化器
-class GroupSerializer(serializers.ModelSerializer):
-    '''小组序列化器'''
-    creator = UserSerializer(read_only=True)
-    students = UserSerializer(many=True, read_only=True)
-    class Meta:
-        model = Group
-        fields = ['id', 'name', 'course', 'students', 'creator', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at', 'course', 'creator']
-    # endregion
-
-    # region 小组创建序列化器
-class GroupCreateSerializer(serializers.ModelSerializer):
-    '''小组创建序列化器'''
-    course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all(), required=True)
-    class Meta:
-        model = Group
-        fields = ['course']
-    
-    def create(self, validated_data):
-        '''创建小组'''
-        user = self.context['request'].user
-        validated_data['max_students'] = validated_data['course'].max_group_size
-        validated_data['min_students'] = validated_data['course'].min_group_size
-        group = Group.objects.create(creator=user, **validated_data)
-        if user.role == 'STUDENT':
-            group.students.add(user)
-        return group
-    # endregion
-
-    # region 退出小组序列化器
-class LeaveGroupSerializer(serializers.Serializer):
-    """退出小组序列化器"""
-    student_user_id = serializers.CharField(required=True)
-
-    class Meta:
-        model = Group
-        fields = ['student_user_id']
-        read_only_fields = ['student_user_id']
-
-    def validate_student_user_id(self, value):
-        '''验证学生用户ID'''
-        if not User.objects.filter(user_id=value).exists():
-            raise Http404("学生用户ID不存在")
-        return value
-    # endregion
-
-    # region 小组列表序列化器
-class GroupListSerializer(serializers.ModelSerializer):
-    '''小组列表序列化器'''
-    class Meta:
-        model = Group
-        fields = ['id', 'name', 'course', 'students', 'creator', 'created_at', 'updated_at']
-    # endregion
-
-
-
-# endregion
-
-
-
-# region 课程的课题序列化器
+    # region 课程的课题序列化器
 class AddSubjectSerializer(serializers.Serializer):
     """添加课题序列化器"""
     subject_ids = serializers.CharField(required=True, help_text="课题ID列表，用逗号分隔")
@@ -234,8 +177,99 @@ class DeleteSubjectSerializer(serializers.Serializer):
             return value
         except ValueError:
             raise serializers.ValidationError("无效的UUID格式")
+    # endregion
 
+# endregion
+
+# region 小组序列化器
+
+
+
+    # region 小组选题序列化器
+class GroupSubjectSerializer(serializers.ModelSerializer):
+    """小组选题序列化器"""
+    course_subject = CourseSubjectSerializer(read_only=True)
+    class Meta:
+        model = GroupSubject
+        fields = ['id', 'group', 'course_subject', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+class SelectSubjectSerializer(serializers.Serializer):
+    """选题序列化器"""
+    course_subject_id = serializers.UUIDField(required=True, help_text="要选择的课程课题ID")
+
+    def validate_course_subject_id(self, value):
+        """验证course_subject_id格式"""
+        try:
+            uuid.UUID(str(value))
+            return value
+        except ValueError:
+            raise serializers.ValidationError("无效的UUID格式")
+    # endregion
+
+
+    # region 小组通用序列化器
+class GroupSerializer(serializers.ModelSerializer):
+    '''小组序列化器'''
+    creator = UserSerializer(read_only=True)
+    students = UserSerializer(many=True, read_only=True)
+    group_subjects = GroupSubjectSerializer(many=True, read_only=True)
+    class Meta:
+        model = Group
+        fields = ['id', 'name', 'course', 'students', 'creator', 'created_at', 'updated_at', 'max_students', 'min_students', 'group_subjects']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'course', 'creator', 'max_students', 'min_students', 'group_subjects']
+    # endregion
+
+
+    # region 小组创建序列化器
+class GroupCreateSerializer(serializers.ModelSerializer):
+    '''小组创建序列化器'''
+    course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all(), required=True)
+    class Meta:
+        model = Group
+        fields = ['course']
+    
+    def create(self, validated_data):
+        '''创建小组'''
+        user = self.context['request'].user
+        validated_data['max_students'] = validated_data['course'].max_group_size
+        validated_data['min_students'] = validated_data['course'].min_group_size
+        group = Group.objects.create(creator=user, **validated_data)
+        if user.role == 'STUDENT':
+            group.students.add(user)
+        return group
+    # endregion
+
+    # region 退出小组序列化器
+class LeaveGroupSerializer(serializers.Serializer):
+    """退出小组序列化器"""
+    student_user_id = serializers.CharField(required=True)
+
+    class Meta:
+        model = Group
+        fields = ['student_user_id']
+        read_only_fields = ['student_user_id']
+
+    def validate_student_user_id(self, value):
+        '''验证学生用户ID'''
+        if not User.objects.filter(user_id=value).exists():
+            raise Http404("学生用户ID不存在")
+        return value
+    # endregion
+
+    # region 小组列表序列化器
+class GroupListSerializer(serializers.ModelSerializer):
+    '''小组列表序列化器'''
+    class Meta:
+        model = Group
+        fields = ['id', 'name', 'course', 'students', 'creator', 'created_at', 'updated_at']
+    # endregion
 
 
 
 # endregion
+
+
+
+
+

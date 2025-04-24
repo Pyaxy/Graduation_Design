@@ -312,6 +312,16 @@ export const dynamicRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: "group-detail/:courseId/:groupId",
+        component: () => import("@/pages/group/group-detail/index.vue"),
+        name: "Group-Detail",
+        meta: {
+          title: "小组详情",
+          roles: ["TEACHER", "ADMIN", "STUDENT"],
+          hidden: true
+        }
+      },
+      {
         path: "subject-detail/:id",
         component: () => import("@/pages/subject/detail.vue"),
         name: "Subject-Detail",

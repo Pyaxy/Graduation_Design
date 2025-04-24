@@ -11,16 +11,16 @@ import string
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
-from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse, CanLeaveCourse, CanSeeStudents, CanJoinGroup, CanLeaveGroup, CanAddSubjectToCourse, CanSeeSubjects, CanDeleteSubjectFromCourse
+from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse, CanLeaveCourse, CanSeeStudents, CanJoinGroup, CanLeaveGroup, CanAddSubjectToCourse, CanSeeSubjects, CanDeleteSubjectFromCourse, CanSelectSubject, CanUnselectSubject, CanSeeGroupDetail
 from CodeCollab.api.decorators import standard_response
-from .serializers import CourseCreateSerializer, GroupSerializer, GroupCreateSerializer, LeaveGroupSerializer, AddSubjectSerializer, CourseSubjectSerializer, DeleteSubjectSerializer
+from .serializers import CourseCreateSerializer, GroupSerializer, GroupCreateSerializer, LeaveGroupSerializer, AddSubjectSerializer, CourseSubjectSerializer, DeleteSubjectSerializer, SelectSubjectSerializer
 from rest_framework.exceptions import ValidationError
 from accounts.models import User
 from django.http import Http404
 from django.db.models import Q
 import logging
 from subject.models import Subject, PublicSubject
-from course.models import CourseSubject
+from course.models import CourseSubject, GroupSubject
 
 logger = logging.getLogger(__name__)
 # Create your views here.
@@ -449,10 +449,16 @@ class GroupViewSet(viewsets.ModelViewSet):
         # 创建小组需要学生权限
         if self.action == 'create':
             permission_classes = [IsAuthenticated]
+        elif self.action == 'retrieve':
+            permission_classes = [IsAuthenticated, CanSeeGroupDetail]
         elif self.action == 'join':
             permission_classes = [IsAuthenticated, CanJoinGroup]
         elif self.action == 'leave':
             permission_classes = [IsAuthenticated, CanLeaveGroup]
+        elif self.action == 'select_subject':
+            permission_classes = [IsAuthenticated, CanSelectSubject]
+        elif self.action == 'unselect_subject':
+            permission_classes = [IsAuthenticated, CanUnselectSubject]
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
@@ -680,6 +686,92 @@ class GroupViewSet(viewsets.ModelViewSet):
                 group.save()
             group.save()
         return Response(None, status=status.HTTP_200_OK)
+    # endregion
+
+    # region 小组选题
+    @action(detail=True, methods=['post'])
+    @standard_response("小组选题成功")
+    def select_subject(self, request, *args, **kwargs):
+        """小组选题"""
+        try:
+            # 获取小组
+            group = self.get_object()
+        except Http404:
+            raise Http404("未查询到该小组")
+        
+        # 验证请求参数
+        serializer = SelectSubjectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        course_subject_id = serializer.validated_data['course_subject_id']
+        
+        try:
+            # 获取课程课题
+            course_subject = CourseSubject.objects.get(id=course_subject_id)
+        except CourseSubject.DoesNotExist:
+            raise Http404("未查询到该课程课题")
+        
+        # 验证小组是否属于该课程
+        if group.course != course_subject.course:
+            raise ValidationError("小组和课题不属于同一个课程")
+        # 验证课程状态
+        course = group.course
+        if course.status == "in_progress":
+            raise ValidationError("课程正在进行中，无法选题")
+        if course.status == "completed":
+            raise ValidationError("课程已结束，无法选题")
+        
+        # 验证小组是否已经选择了课题
+        if GroupSubject.objects.filter(group=group).exists():
+            raise ValidationError("小组已经选择了课题")
+        
+        # 验证课题是否已被选择超过最大次数
+        current_selections = GroupSubject.objects.filter(course_subject=course_subject).count()
+        if current_selections >= course.max_subject_selections:
+            raise ValidationError(f"该课题已被选择超过最大次数（{course.max_subject_selections}次）")
+        
+        # 创建小组选题
+        try:
+            GroupSubject.objects.create(
+                group=group,
+                course_subject=course_subject
+            )
+        except ValidationError as e:
+            raise ValidationError(str(e))
+        
+        return Response(None, status=status.HTTP_201_CREATED)
+    # endregion
+
+    # region 退选课题
+    @action(detail=True, methods=['delete'])
+    @standard_response("退选课题成功")
+    def unselect_subject(self, request, *args, **kwargs):
+        """退选课题"""
+        try:
+            # 获取小组
+            group = self.get_object()
+        except Http404:
+            raise Http404("未查询到该小组")
+        
+        # 状态检查
+        course = group.course
+        if course.status == "in_progress":
+            raise ValidationError("课程正在进行中，无法退选课题")
+        if course.status == "completed":
+            raise ValidationError("课程已结束，无法退选课题")
+        
+        # 验证小组是否已经选择了课题
+        if not GroupSubject.objects.filter(group=group).exists():
+            raise ValidationError("小组未选择课题")
+        
+        # 删除小组选题
+        GroupSubject.objects.filter(group=group).delete()
+        
+        return Response(None, status=status.HTTP_204_NO_CONTENT)
+    # endregion
+        
+        
+        
+        
     # endregion
 
     # TODO: 获取小组详情

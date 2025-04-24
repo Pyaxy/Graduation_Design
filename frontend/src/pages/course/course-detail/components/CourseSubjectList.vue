@@ -10,10 +10,12 @@ import { deleteSubjectFromCourse, getCourseSubjectList } from "../../apis"
 
 const props = defineProps<{
   courseId: string
+  showSelectButton?: boolean
 }>()
 
-const _emit = defineEmits<{
+const emit = defineEmits<{
   (e: "refresh"): void
+  (e: "select", subjectId: string): void
 }>()
 
 const loading = ref<boolean>(false)
@@ -72,7 +74,7 @@ function handleDelete(id: string) {
         .then(() => {
           ElMessage.success("删除成功")
           getSubjectData()
-          _emit("refresh")
+          emit("refresh")
         })
         .catch(() => {
           ElMessage.error("删除失败")
@@ -165,6 +167,22 @@ watch([() => paginationData.currentPage, () => paginationData.pageSize], getSubj
                 circle
                 @click="handleDelete(scope.row.id)"
               />
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="showSelectButton"
+            label="操作"
+            width="120"
+            align="center"
+            fixed="right"
+          >
+            <template #default="scope">
+              <el-button
+                type="primary"
+                @click="emit('select', scope.row.id)"
+              >
+                选择
+              </el-button>
             </template>
           </el-table-column>
         </el-table>

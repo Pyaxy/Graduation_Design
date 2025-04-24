@@ -35,7 +35,8 @@ const DEFAULT_FORM_DATA: CreateOrUpdateCourseRequestData = {
   start_date: "",
   end_date: "",
   max_group_size: 0,
-  min_group_size: 0
+  min_group_size: 0,
+  max_subject_selections: 3
 }
 const dialogVisible = ref<boolean>(false)
 const formRef = ref<FormInstance | null>(null)
@@ -46,7 +47,8 @@ const formRules: FormRules<CreateOrUpdateCourseRequestData> = {
   start_date: [{ required: true, trigger: "blur", message: "请选择开始日期" }],
   end_date: [{ required: true, trigger: "blur", message: "请选择结束日期" }],
   max_group_size: [{ required: true, trigger: "blur", message: "请输入最大小组人数" }],
-  min_group_size: [{ required: true, trigger: "blur", message: "请输入最小小组人数" }]
+  min_group_size: [{ required: true, trigger: "blur", message: "请输入最小小组人数" }],
+  max_subject_selections: [{ required: true, trigger: "blur", message: "请输入最大课题选择数" }]
 }
 
 function handleCreateOrUpdate() {
@@ -115,7 +117,8 @@ function handleUpdate(row: CourseData) {
     start_date: row.start_date,
     end_date: row.end_date,
     max_group_size: row.max_group_size,
-    min_group_size: row.min_group_size
+    min_group_size: row.min_group_size,
+    max_subject_selections: row.max_subject_selections
   })
 }
 // #endregion
@@ -341,6 +344,9 @@ watch([() => paginationData.currentPage, () => paginationData.pageSize], getCour
         </el-form-item>
         <el-form-item v-if="formData.id === undefined" prop="min_group_size" label="最小小组人数">
           <el-input-number v-model="formData.min_group_size" placeholder="请输入" />
+        </el-form-item>
+        <el-form-item v-if="formData.id === undefined" prop="max_subject_selections" label="最大课题选择数">
+          <el-input-number v-model="formData.max_subject_selections" placeholder="请输入" />
         </el-form-item>
       </el-form>
       <template #footer>
