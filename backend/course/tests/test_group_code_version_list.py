@@ -1,16 +1,17 @@
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.urls import reverse
-from course.models import Course, CourseSubject
+from course.models import Course, CourseSubject, Group, GroupSubject, GroupCodeVersion
 from subject.models import Subject, PublicSubject
 from accounts.models import User
 import datetime
 from django.core.files.uploadedfile import SimpleUploadedFile
+import os
 MAX_COURSES = 10
 MAX_SUBJECTS = 10
 MAX_STUDENTS = 10
 
-class ListSubjectsTestCase(APITestCase):
+class GroupCodeVersionListTestCase(APITestCase):
     # region 测试数据准备
     @classmethod
     def setUpTestData(cls):
@@ -100,6 +101,8 @@ class ListSubjectsTestCase(APITestCase):
         Course.objects.all().delete()
         Subject.objects.all().delete()
         PublicSubject.objects.all().delete()
+        GroupCodeVersion.objects.all().delete()
+        
         # 获取token
         self.teacher_token = self.client.post(
             reverse("login"),
@@ -252,183 +255,161 @@ class ListSubjectsTestCase(APITestCase):
             },
             HTTP_AUTHORIZATION=f"Bearer {token if token else self.teacher_token}"
         )
-
-    # endregion
-
-    # region 正常功能测试
-    def test_list_subjects_with_teacher(self):
-        """教师查看课题列表"""
-        # 创建课程
-        self.create_courses(count=1, token=self.teacher_token)
-        course = Course.objects.first()
-        # 创建课题
-        self.create_subjects(count=1, token=self.teacher_token)
-        subject = Subject.objects.first()
-        # 审核课题
-        self.review_subjects(subject_id=subject.id, status="APPROVED")
-        subject.refresh_from_db()
-        # 添加课题到课程
-        self.add_subject_to_course(course_id=course.id, subject_id=subject.id, token=self.teacher_token)
-        # 查看课题列表
-        response = self.client.get(
-            f'{reverse("course-list")}{course.id}/subjects_list/',
-            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+    
+    def select_subject(self, group_id, course_subject_id, token=None):
+        """选择课题"""
+        return self.client.post(
+            f"{reverse('group-list')}{group_id}/select_subject/",
+            data={"course_subject_id": course_subject_id},
+            HTTP_AUTHORIZATION=f"Bearer {token if token else self.student_token}"
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # 验证返回的课题列表是否包含刚刚添加的课题
-        self.assertIn('data', response.data)
-        self.assertIn('message', response.data)
-        self.assertIn('count', response.data['data'])
-        self.assertIn('next', response.data['data'])
-        self.assertIn('previous', response.data['data'])
-        self.assertIn('results', response.data['data'])
-        self.assertEqual(len(response.data['data']['results']), 1)
-        self.assertEqual(response.data['data']['results'][0]['subject']['id'], subject.id)
-        self.assertEqual(response.data['data']['results'][0]['subject']['title'], subject.title)
-        self.assertEqual(response.data['data']['results'][0]['subject']['description'], subject.description)
-        self.assertEqual(response.data['data']['results'][0]['subject']['languages'], subject.languages)
-        self.assertEqual(response.data['data']['results'][0]['subject_type'], 'PRIVATE')
-        
-    def test_list_subjects_with_student(self):
-        """学生查看课题列表"""
+    
+    def create_course_and_subject_and_group(self):
+        """创建课程，学生1加入课程，学生1创建小组，学生1选择课题"""
         # 创建课程
-        self.create_courses(count=1, token=self.teacher_token)
+        self.create_courses(count=1)
         course = Course.objects.first()
-        # 创建课题
-        self.create_subjects(count=1, token=self.teacher_token)
-        subject = Subject.objects.first()
-        # 审核课题
-        self.review_subjects(subject_id=subject.id, status="APPROVED")
-        subject.refresh_from_db()
-        # 添加课题到课程
-        self.add_subject_to_course(course_id=course.id, subject_id=subject.id, token=self.teacher_token)
         # 加入课程
-        self.join_course(course_code=course.course_code, token=self.student_token)
-        # 查看课题列表
-        response = self.client.get(
-            f'{reverse("course-list")}{course.id}/subjects_list/',
-            HTTP_AUTHORIZATION=f"Bearer {self.student_token}"
-        )
+        response = self.join_course(course_code=course.course_code, token=self.student_token)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # 验证返回的课题列表是否包含刚刚添加的课题
-        self.assertIn('data', response.data)
-        self.assertIn('message', response.data)
-        self.assertIn('count', response.data['data'])
-        self.assertIn('next', response.data['data'])
-        self.assertIn('previous', response.data['data'])
-        self.assertIn('results', response.data['data'])
-        self.assertEqual(len(response.data['data']['results']), 1)
-        self.assertEqual(response.data['data']['results'][0]['subject']['id'], subject.id)
-        self.assertEqual(response.data['data']['results'][0]['subject']['title'], subject.title)
-        self.assertEqual(response.data['data']['results'][0]['subject']['description'], subject.description)
-        self.assertEqual(response.data['data']['results'][0]['subject']['languages'], subject.languages)
-        self.assertEqual(response.data['data']['results'][0]['subject_type'], 'PRIVATE')
-        
-    def test_list_subjects_with_empty_database(self):
-        """空数据库时返回空列表"""
-        # 创建课程
-        self.create_courses(count=1, token=self.teacher_token)
-        course = Course.objects.first()
-        # 查看课题列表
-        response = self.client.get(
-            f'{reverse("course-list")}{course.id}/subjects_list/',
-            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
-        )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # 验证返回的课题列表是否为空
-        self.assertIn('data', response.data)
-        self.assertIn('message', response.data)
-        self.assertIn('count', response.data['data'])
-        self.assertIn('next', response.data['data'])
-        self.assertIn('previous', response.data['data'])
-        self.assertIn('results', response.data['data'])
-        self.assertEqual(len(response.data['data']['results']), 0)
-        self.assertEqual(response.data['data']['count'], 0)
-
-    # endregion
-
-    # region 测试权限
-    def test_list_subjects_with_unauthorized_user(self):
-        """未授权用户访问时返回401"""
-        # 创建课程
-        self.create_courses(count=1, token=self.teacher_token)
-        course = Course.objects.first()
-        # 查看课题列表
-        response = self.client.get(
-            f'{reverse("course-list")}{course.id}/subjects_list/',
-        )
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        # 验证返回的错误信息
-        self.assertIn('message', response.data)
-        self.assertIn('data', response.data)
-        
-    def test_list_subjects_with_student_can_not_see_not_joined_courses(self):
-        """学生不能查看未加入的课程"""
-        # 创建课程
-        self.create_courses(count=1, token=self.teacher_token)
-        course = Course.objects.first()
-        # 查看课题列表
-        response = self.client.get(
-            f'{reverse("course-list")}{course.id}/subjects_list/',
-            HTTP_AUTHORIZATION=f"Bearer {self.student_token}"
-        )
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        # 验证返回的错误信息
-        self.assertIn('message', response.data)
-        self.assertIn('data', response.data)
-        
-    def test_list_subjects_with_teacher_can_not_see_other_teacher_courses(self):
-        """教师不能查看其他教师的课程"""
-        # 创建课程
-        self.create_courses(count=1, token=self.teacher_token)
-        course = Course.objects.first()
-        # 查看课题列表
-        response = self.client.get(
-            f'{reverse("course-list")}{course.id}/subjects_list/',
-            HTTP_AUTHORIZATION=f"Bearer {self.teacher2_token}"
-        )
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        # 验证返回的错误信息
-        self.assertIn('message', response.data)
-        self.assertIn('data', response.data)
-    # endregion
-
-    # region 文件测试
-    def test_list_subjects_with_file(self):
-        """课题包含文件时返回文件"""
-        # 创建课程
-        self.create_courses(count=1, token=self.teacher_token)
-        course = Course.objects.first()
         # 创建课题
-        self.create_subject_with_file(subject_id=1, token=self.teacher_token)
+        self.create_subjects(count=1, token=self.teacher_token)
         subject = Subject.objects.first()
         # 审核课题
-        self.review_subjects(subject_id=subject.id, status="APPROVED")
-        subject.refresh_from_db()
-        # 添加课题到课程
-        self.add_subject_to_course(course_id=course.id, subject_id=subject.id, token=self.teacher_token)
-        # 查看课题列表
+        response = self.review_subjects(subject_id=subject.id, status="APPROVED")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # 加入课题
+        response = self.add_subject_to_course(course_id=course.id, subject_id=subject.id)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        course_subject = CourseSubject.objects.first()
+        # 创建小组
+        response = self.create_group(course_id=course.id, token=self.student_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        group = Group.objects.first()
+        # 选择课题
+        response = self.select_subject(group_id=group.id, course_subject_id=course_subject.id, token=self.student_token)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        return course, subject, group, course_subject
+    
+    def update_course_status(self, course_id, status):
+        """更新课程状态"""
+        course = Course.objects.get(id=course_id)
+        if status == "not_started":
+            start_date = self.get_day(days=1)
+            end_date = self.get_day(days=2)
+        elif status == "in_progress":
+            start_date = self.get_day(days=-1)
+            end_date = self.get_day(days=1)
+        elif status == "completed":
+            start_date = self.get_day(days=-2)
+            end_date = self.get_day(days=-1)
+        response = self.client.put(
+            f"{reverse('course-list')}{course_id}/",
+            data={
+                "name": course.name,
+                "description": course.description,
+                "start_date": start_date,
+                "end_date": end_date,
+            },
+            headers={"Authorization": f"Bearer {self.teacher_token}"}
+        )
+    
+    def get_test_zip_file(self):
+        """获取测试ZIP文件"""
+        test_zip_path = os.path.join(os.path.dirname(__file__), 'test_zip_file.zip')
+        with open(test_zip_path, 'rb') as f:
+            zip_file = SimpleUploadedFile(
+                name='test_zip_file.zip',
+                content=f.read(),
+                content_type='application/zip'
+            )
+        return zip_file
+    def create_group_code_version(self, version, group, token=None):
+        """创建小组代码版本"""
+        response = self.client.post(
+            f"{reverse('group-list')}{group.id}/versions/",
+            data={
+                'version': version,
+                'description': 'test_description',
+                "zip_file": self.get_test_zip_file()
+            },
+            HTTP_AUTHORIZATION=f"Bearer {token if token else self.student_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+    # endregion
+    
+    # region 正常测试
+    def test_list_group_code_versions(self):
+        """测试列出小组代码版本"""
+        course, subject, group, course_subject = self.create_course_and_subject_and_group()
+        self.update_course_status(course_id=course.id, status="in_progress")
+        # 创建小组代码版本
+        self.create_group_code_version(group=group, version="1.0")
+        # 创建小组代码版本
+        self.create_group_code_version(group=group, version="2.0")
+        # 列出小组代码版本
         response = self.client.get(
-            f'{reverse("course-list")}{course.id}/subjects_list/',
-            HTTP_AUTHORIZATION=f"Bearer {self.teacher_token}"
+            f"{reverse('group-list')}{group.id}/versions/",
+            HTTP_AUTHORIZATION=f"Bearer {self.student_token}"
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # 验证返回的课题列表是否包含刚刚添加的课题
+        
+        # 检查是否有data和message
         self.assertIn('data', response.data)
         self.assertIn('message', response.data)
-        self.assertIn('count', response.data['data'])
-        self.assertIn('next', response.data['data'])
-        self.assertIn('previous', response.data['data'])
-        self.assertIn('results', response.data['data'])
-        self.assertEqual(len(response.data['data']['results']), 1)
-        self.assertEqual(response.data['data']['results'][0]['subject']['id'], subject.id)
-        self.assertEqual(response.data['data']['results'][0]['subject']['title'], subject.title)
-        self.assertEqual(response.data['data']['results'][0]['subject']['description'], subject.description)
-        self.assertEqual(response.data['data']['results'][0]['subject']['languages'], subject.languages)
-        self.assertIn(subject.description_file.name, response.data['data']['results'][0]['subject']['description_file'])
-        self.assertEqual(response.data['data']['results'][0]['subject_type'], 'PRIVATE')
-
-        subject.delete()
+        data = response.data['data']
+        # 检查返回的内容
+        self.assertEqual(data['count'], 2)
+        self.assertEqual(data['next'], None)
+        self.assertEqual(data['previous'], None)
+        res = data['results']
+        self.assertEqual(len(res), 2)
+        self.assertEqual(res[0]['version'], '2.0')
+        
+    def test_list_group_code_versions_with_empty_database(self):
+        """测试没有版本情况下为空"""
+        course, subject, group, course_subject = self.create_course_and_subject_and_group()
+        self.update_course_status(course_id=course.id, status="in_progress")
+        response = self.client.get(
+            f"{reverse('group-list')}{group.id}/versions/",
+            HTTP_AUTHORIZATION=f"Bearer {self.student_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['data']['count'], 0)
+        
     # endregion
+    
+    # region 权限测试
+    def test_list_group_code_versions_with_student_not_in_course(self):
+        """测试学生不在课程中"""
+        course, subject, group, course_subject = self.create_course_and_subject_and_group()
+        self.update_course_status(course_id=course.id, status="in_progress")
+        # 创建小组代码版本
+        self.create_group_code_version(group=group, version="1.0")
+        # 创建小组代码版本
+        self.create_group_code_version(group=group, version="2.0")
+        # 列出小组代码版本
+        response = self.client.get(
+            f"{reverse('group-list')}{group.id}/versions/",
+            HTTP_AUTHORIZATION=f"Bearer {self.student2_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         
-        
+    def test_list_group_code_versions_with_student_not_in_group(self):
+        """测试学生不在小组中"""
+        course, subject, group, course_subject = self.create_course_and_subject_and_group()
+        # 加入课程
+        self.join_course(course_code=course.course_code, token=self.student2_token)
+        self.update_course_status(course_id=course.id, status="in_progress")
+        # 创建小组代码版本
+        self.create_group_code_version(group=group, version="1.0")
+        # 创建小组代码版本
+        self.create_group_code_version(group=group, version="2.0")
+        # 列出小组代码版本
+        response = self.client.get(
+            f"{reverse('group-list')}{group.id}/versions/",
+            HTTP_AUTHORIZATION=f"Bearer {self.student2_token}"
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    # endregion
+    

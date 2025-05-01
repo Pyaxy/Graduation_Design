@@ -48,3 +48,44 @@ export interface GroupData {
     updated_at: string
   }>
 }
+
+export interface GroupCodeVersion {
+  id: string
+  version: string
+  description: string
+  total_files: number
+  total_size: number
+  created_at: string
+  updated_at: string
+  files: GroupCodeFile[]
+}
+
+export interface GroupCodeFile {
+  id: string
+  path: string
+  content: string | null
+  size: number
+  is_previewable: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface GroupCodeVersionList {
+  count: number
+  next: string | null
+  previous: string | null
+  results: Array<{
+    id: string
+    version: string
+  }>
+}
+
+export interface GroupCodeVersionResponse {
+  data: GroupCodeVersion
+  message: string
+}
+
+export interface GroupCodeVersionListResponse {
+  data: GroupCodeVersionList
+  message: string
+}

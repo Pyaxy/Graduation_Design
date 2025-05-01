@@ -77,7 +77,8 @@ class GroupListViewTest(APITestCase):
                 "name": f"test_course_{i}",
                 "description": f"test_description_{i}",
                 "max_group_size": 3,
-                "min_group_size": 1
+                "min_group_size": 1,
+                "max_subject_selections": 1
             }
             for i in range(1, MAX_COURSES + 1)
         ]
@@ -127,7 +128,8 @@ class GroupListViewTest(APITestCase):
                 "start_date": self.get_day(days=start_delta),
                 "end_date": self.get_day(days=end_delta),
                 "max_group_size": data["max_group_size"],
-                "min_group_size": data["min_group_size"]
+                "min_group_size": data["min_group_size"],
+                "max_subject_selections": data["max_subject_selections"]
                 },
                 HTTP_AUTHORIZATION=f"Bearer {token if token else self.teacher_token}"
             )

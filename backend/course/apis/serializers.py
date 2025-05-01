@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from ..models import Course, Group, CourseSubject, GroupSubject
+from ..models import Course, Group, CourseSubject, GroupSubject, GroupCodeFile, GroupCodeVersion
 from accounts.models import User
 from django.http import Http404
 from subject.api.serializers import SubjectSerializer, PublicSubjectSerializer
@@ -267,6 +267,53 @@ class GroupListSerializer(serializers.ModelSerializer):
 
 
 
+# endregion
+
+# region 代码序列化器
+class GroupCodeFileSerializer(serializers.ModelSerializer):
+    """代码文件序列化器"""
+    class Meta:
+        model = GroupCodeFile
+        fields = ['id', 'path', 'content', 'size', 'is_previewable', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'content', 'size', 'is_previewable', 'created_at', 'updated_at']
+
+class GroupCodeVersionSerializer(serializers.ModelSerializer):
+    """代码版本序列化器"""
+    files = GroupCodeFileSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = GroupCodeVersion
+        fields = ['id', 'version', 'description', 'total_files', 'total_size', 'files', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'total_files', 'total_size', 'files', 'created_at', 'updated_at']
+
+class GroupCodeVersionCreateSerializer(serializers.ModelSerializer):
+    """代码版本创建序列化器"""
+    zip_file = serializers.FileField(required=True)
+    
+    class Meta:
+        model = GroupCodeVersion
+        fields = ['version', 'description', 'zip_file']
+    
+    def validate_version(self, value):
+        """验证版本号是否已存在"""
+        group = self.context['group']
+        if GroupCodeVersion.objects.filter(group=group, version=value).exists():
+            raise serializers.ValidationError("该版本号已存在")
+        return value
+    
+    def validate_zip_file(self, value):
+        """验证ZIP文件"""
+        if not value.name.endswith('.zip'):
+            raise serializers.ValidationError("只支持ZIP格式的文件")
+        return value
+    
+class GroupCodeVersionListSerializer(serializers.ModelSerializer):
+    """代码版本列表序列化器"""
+    
+    class Meta:
+        model = GroupCodeVersion
+        fields = ['id', 'version']
+        read_only_fields = ['id', 'version']
 # endregion
 
 

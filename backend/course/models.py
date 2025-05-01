@@ -171,3 +171,66 @@ class GroupSubject(models.Model):
         self.clean()
         super().save(*args, **kwargs)
 # endregion
+
+# region 代码版本模型
+class GroupCodeVersion(models.Model):
+    """小组代码版本模型"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='code_versions', verbose_name='小组')
+    version = models.CharField(max_length=50, verbose_name='版本号')
+    description = models.TextField(verbose_name='版本描述', blank=True)
+    zip_file = models.FileField(upload_to='group_codes/zip/%Y/%m/%d/', verbose_name='ZIP文件')
+    total_files = models.IntegerField(default=0, verbose_name='文件总数')
+    total_size = models.BigIntegerField(default=0, verbose_name='总大小(字节)')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    
+    class Meta:
+        verbose_name = '代码版本'
+        verbose_name_plural = '代码版本'
+        ordering = ['-created_at']
+        unique_together = ['group', 'version']
+    
+    def __str__(self):
+        return f"{self.group.name} - {self.version}"
+    
+# endregion
+
+# region 代码文件模型
+class GroupCodeFile(models.Model):
+    """小组代码文件模型"""
+    # 可预览的文件类型
+    PREVIEWABLE_EXTENSIONS = [
+        '.py', '.js', '.jsx', '.ts', '.tsx', '.html', '.css', '.scss', '.less',
+        '.java', '.cpp', '.c', '.h', '.hpp', '.go', '.rs', '.swift', '.kt',
+        '.md', '.txt', '.json', '.xml', '.yml', '.yaml', '.ini', '.conf',
+        '.sh', '.bash', '.zsh', '.fish', '.ps1', '.bat', '.cmd'
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    version = models.ForeignKey(GroupCodeVersion, on_delete=models.CASCADE, related_name='files', verbose_name='版本')
+    path = models.CharField(max_length=500, verbose_name='文件路径')
+    content = models.TextField(verbose_name='文件内容', null=True, blank=True)
+    size = models.BigIntegerField(verbose_name='文件大小(字节)')
+    is_previewable = models.BooleanField(default=False, verbose_name='是否可预览')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    
+    class Meta:
+        verbose_name = '代码文件'
+        verbose_name_plural = '代码文件'
+        ordering = ['path']
+        unique_together = ['version', 'path']
+    
+    def __str__(self):
+        return f"{self.version.group.name} - {self.path}"
+    
+    def save(self, *args, **kwargs):
+        """重写save方法，在保存时判断文件是否可预览"""
+        # 获取文件扩展名
+        import os
+        _, ext = os.path.splitext(self.path)
+        # 判断文件是否可预览
+        self.is_previewable = ext.lower() in self.PREVIEWABLE_EXTENSIONS
+        super().save(*args, **kwargs)
+# endregion

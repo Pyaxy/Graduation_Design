@@ -1,4 +1,4 @@
-import type { GroupData } from "./type"
+import type { GroupCodeVersion, GroupCodeVersionListResponse, GroupCodeVersionResponse, GroupData } from "./type"
 import { request } from "@/http/axios"
 
 export function getGroupDetail(groupId: string) {
@@ -22,5 +22,30 @@ export function unselectSubject(groupId: string) {
   return request({
     url: `/groups/${groupId}/unselect_subject/`,
     method: "DELETE"
+  })
+}
+
+export function createGroupCodeVersion(groupId: string, data: FormData) {
+  return request<GroupCodeVersion>({
+    url: `/groups/${groupId}/versions/`,
+    method: "POST",
+    data,
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  })
+}
+
+export function listGroupCodeVersions(groupId: string) {
+  return request<GroupCodeVersionListResponse>({
+    url: `/groups/${groupId}/versions/`,
+    method: "GET"
+  })
+}
+
+export function getGroupCodeVersion(groupId: string, versionId: string) {
+  return request<GroupCodeVersionResponse>({
+    url: `/groups/${groupId}/versions/${versionId}/`,
+    method: "GET"
   })
 }

@@ -101,7 +101,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -134,7 +135,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -157,7 +159,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -178,7 +181,8 @@ class CourseCreateTestCase(APITestCase):
             "description": "test_description",
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -201,7 +205,8 @@ class CourseCreateTestCase(APITestCase):
             "description": "test_description",
             "start_date": self.get_day(days=1),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -225,7 +230,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=2),
             "end_date": self.get_day(days=1),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -245,7 +251,8 @@ class CourseCreateTestCase(APITestCase):
             "description": "test_description",
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -265,7 +272,8 @@ class CourseCreateTestCase(APITestCase):
             "description": "test_description",
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
-            "max_group_size": 3
+            "max_group_size": 3,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -286,7 +294,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
             "max_group_size": 1,
-            "min_group_size": 3
+            "min_group_size": 3,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -309,7 +318,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -326,7 +336,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -344,7 +355,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -378,6 +390,7 @@ class CourseCreateTestCase(APITestCase):
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
             "min_group_size": 1,
+            "max_subject_selections": 1,
             "status": "in_progress"
         }
         response = self.client.post(
@@ -412,6 +425,7 @@ class CourseCreateTestCase(APITestCase):
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
             "min_group_size": 1,
+            "max_subject_selections": 1,
             "status": "completed"
         }
         response = self.client.post(
@@ -445,7 +459,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -480,7 +495,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=1),
             "end_date": self.get_day(days=2),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -513,7 +529,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=-1),
             "end_date": self.get_day(days=1),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,
@@ -546,7 +563,8 @@ class CourseCreateTestCase(APITestCase):
             "start_date": self.get_day(days=-2),
             "end_date": self.get_day(days=-1),
             "max_group_size": 3,
-            "min_group_size": 1
+            "min_group_size": 1,
+            "max_subject_selections": 1
         }
         response = self.client.post(
             self.url,

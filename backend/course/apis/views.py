@@ -4,8 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from ..models import Course, Group
-from .serializers import CourseSerializer, JoinCourseSerializer, LeaveCourseSerializer, UserSerializer
+from ..models import Course, Group, GroupCodeVersion, GroupCodeFile
+from .serializers import CourseSerializer, JoinCourseSerializer, LeaveCourseSerializer, UserSerializer, GroupCodeVersionSerializer, GroupCodeVersionCreateSerializer, GroupCodeVersionListSerializer
 import random
 import string
 from django_filters.rest_framework import DjangoFilterBackend
@@ -21,6 +21,7 @@ from django.db.models import Q
 import logging
 from subject.models import Subject, PublicSubject
 from course.models import CourseSubject, GroupSubject
+import os
 
 logger = logging.getLogger(__name__)
 # Create your views here.
@@ -768,13 +769,164 @@ class GroupViewSet(viewsets.ModelViewSet):
         
         return Response(None, status=status.HTTP_204_NO_CONTENT)
     # endregion
-        
-        
-        
-        
-    # endregion
+# endregion
 
-    # TODO: 获取小组详情
-    # TODO: 更新小组
-    # TODO: 删除小组
+# region 代码视图集
+class GroupCodeVersionViewSet(viewsets.ModelViewSet):
+    """代码版本视图集"""
+    queryset = GroupCodeVersion.objects.all()
+    serializer_class = GroupCodeVersionSerializer
+    pagination_class = CustomPagination
+    
+    # region 代码视图集配置
+    def get_queryset(self):
+        """根据小组ID过滤版本"""
+        user = self.request.user
+        group_id = self.kwargs.get('group_pk')
+        if user.role == "STUDENT":
+            # 学生只能查看自己加入的小组
+            return GroupCodeVersion.objects.filter(group_id=group_id, group__students=user)
+        elif user.role == "TEACHER":
+            # 教师可以查看自己教授的课程的小组
+            return GroupCodeVersion.objects.filter(group_id=group_id, group__course__teacher=user)
+        elif user.role == "ADMIN":
+            # 管理员可以查看所有小组
+            return GroupCodeVersion.objects.filter(group_id=group_id)
+        else:
+            raise Http404("未查询到该小组")
+        
+    def get_permissions(self):
+        """根据不同的操作设置不同的权限"""
+        if self.action == 'create':
+            permission_classes = [IsAuthenticated, IsStudent]
+        elif self.action == 'list':
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+    
+    def get_serializer_class(self):
+        """根据不同的操作设置不同的序列化器"""
+        if self.action == 'create':
+            return GroupCodeVersionCreateSerializer
+        elif self.action == 'list':
+            return GroupCodeVersionListSerializer
+        return GroupCodeVersionSerializer
+    
+    def get_serializer_context(self):
+        """添加小组到序列化器上下文"""
+        context = super().get_serializer_context()
+        user = self.request.user
+        group_id = self.kwargs.get('group_pk')
+        if user.role == "STUDENT":
+            # 学生只能查看自己加入的小组
+            context['group'] = get_object_or_404(Group, id=group_id, students=user)
+        elif user.role == "TEACHER":
+            # 教师可以查看自己教授的课程的小组
+            context['group'] = get_object_or_404(Group, id=group_id, course__teacher=user)
+        elif user.role == "ADMIN":
+            context['group'] = get_object_or_404(Group, id=group_id)
+        return context
+    # endregion
+    
+    # region CRUD
+    @standard_response("创建版本成功")
+    def create(self, request, *args, **kwargs):
+        """创建新版本"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # 获取课程
+        course = self.get_serializer_context()['group'].course
+        # 获取小组
+        group = self.get_serializer_context()['group']
+
+        # 验证课程状态
+        if course.status == "not_started":
+            raise ValidationError("课程未开始，无法上传代码")
+        if course.status == "completed":
+            raise ValidationError("课程已结束，无法上传代码")
+        
+        # 验证小组是否选择了课题
+        if not GroupSubject.objects.filter(group=group).exists():
+            raise ValidationError("小组未选择课题，无法上传代码")
+        
+        # 创建版本
+        version = serializer.save(group_id=group.id)
+        
+        try:
+            # 解压ZIP文件
+            import zipfile
+            import os
+            from django.conf import settings
+            
+            # 创建临时目录
+            temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp', str(version.id))
+            os.makedirs(temp_dir, exist_ok=True)
+            
+            # 解压文件
+            with zipfile.ZipFile(version.zip_file, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+            
+            # 处理文件
+            total_files = 0
+            total_size = 0
+            
+            for root, _, files in os.walk(temp_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    relative_path = os.path.relpath(file_path, temp_dir)
+                    
+                    # 跳过Mac系统特有的隐藏文件
+                    if '__MACOSX' in relative_path or relative_path.startswith('._') or '.DS_Store' in relative_path:
+                        continue
+                    
+                    # 获取文件大小
+                    file_size = os.path.getsize(file_path)
+                    total_size += file_size
+                    
+                    # 创建文件记录
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                    except UnicodeDecodeError:
+                        content = None
+                    
+                    GroupCodeFile.objects.create(
+                        version=version,
+                        path=relative_path,
+                        content=content,
+                        size=file_size
+                    )
+                    total_files += 1
+            
+            # 更新版本信息
+            version.total_files = total_files
+            version.total_size = total_size
+            version.save()
+            
+            # 清理临时文件
+            import shutil
+            shutil.rmtree(temp_dir)
+            
+            return Response(GroupCodeVersionSerializer(version).data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            # 如果处理失败，删除版本
+            version.delete()
+            raise ValidationError(f"处理ZIP文件失败: {str(e)}")
+    
+    @standard_response("获取版本列表成功")
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+    
+    @standard_response("获取版本详情成功")
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+    
+    @standard_response("删除版本成功")
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+    
+    # endregion
 # endregion
