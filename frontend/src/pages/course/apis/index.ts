@@ -155,3 +155,12 @@ export function deleteSubjectFromCourse(courseId: string, subjectId: string) {
     }
   })
 }
+
+// 下载提交信息
+export function downloadSubmissions(courseId: string) {
+  return request({
+    url: `/courses/${courseId}/download_submissions/`,
+    method: "get",
+    responseType: "blob"
+  })
+}

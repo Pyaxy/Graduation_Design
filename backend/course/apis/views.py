@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from ..models import Course, Group, GroupCodeVersion, GroupCodeFile, GroupSubmission
+from ..models import Course, Group, GroupCodeVersion, GroupCodeFile, GroupSubmission, GroupSubmissionContribution
 from .serializers import CourseSerializer, JoinCourseSerializer, LeaveCourseSerializer, UserSerializer, GroupCodeVersionSerializer, GroupCodeVersionCreateSerializer, GroupCodeVersionListSerializer
 import random
 import string
@@ -22,6 +22,8 @@ import logging
 from subject.models import Subject, PublicSubject
 from course.models import CourseSubject, GroupSubject
 import os
+from io import BytesIO
+from django.http import FileResponse
 
 logger = logging.getLogger(__name__)
 # Create your views here.
@@ -431,11 +433,109 @@ class CourseViewSet(viewsets.ModelViewSet):
             raise Http404("未查询到该课程课题")
     # endregion
 
+    # region 下载提交
+    @action(detail=True, methods=['get'])
+    def download_submissions(self, request, pk=None):
+        """下载所有小组的提交信息"""
+        try:
+            course = self.get_object()
+        except Http404:
+            raise Http404("课程不存在")
+        
+        # 验证课程状态
+        if course.status != 'completed':
+            raise ValidationError("课程未结束，无法下载提交信息")
+        
+        # 获取所有小组
+        groups = Group.objects.filter(course=course)
+        
+        # 创建内存缓冲区
+        buffer = BytesIO()
+        
+        try:
+            # 创建ZIP文件
+            import zipfile
+            with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # 创建CSV内容
+                import csv
+                from io import StringIO
+                csv_buffer = StringIO()
+                writer = csv.writer(csv_buffer)
+                writer.writerow(['小组名称', '课题名称', '成员贡献'])
+                
+                # 遍历所有小组
+                for group in groups:
+                    try:
+                        submission = GroupSubmission.objects.get(group=group)
+                        group_subject = GroupSubject.objects.get(group=group)
+                        
+                        # 获取课题名称
+                        if group_subject.course_subject.subject_type == 'PRIVATE':
+                            subject_title = group_subject.course_subject.private_subject.title
+                        else:
+                            subject_title = group_subject.course_subject.public_subject.title
+                        
+                        # 获取成员贡献
+                        contributions = GroupSubmissionContribution.objects.filter(submission=submission)
+                        contribution_str = ', '.join([f"{c.student.name}({c.contribution}%)" for c in contributions])
+                        
+                        # 写入CSV
+                        writer.writerow([
+                            group.name,
+                            subject_title,
+                            contribution_str
+                        ])
+                        
+                        # 添加代码文件到ZIP
+                        code_version = submission.code_version
+                        if code_version.zip_file:
+                            from django.core.files.storage import default_storage
+                            with default_storage.open(code_version.zip_file.name) as f:
+                                zipf.writestr(
+                                    f"code/{group.name}/{group.name}.zip",
+                                    f.read()
+                                )
+                    except (GroupSubmission.DoesNotExist, GroupSubject.DoesNotExist):
+                        # 如果小组未提交或未选题，写入默认值
+                        writer.writerow([
+                            group.name,
+                            '未选题',
+                            '未提交(-1)'
+                        ])
+                
+                # 将CSV内容添加到ZIP
+                zipf.writestr('submissions.csv', csv_buffer.getvalue())
+        except Exception as e:
+            buffer.close()
+            raise e
+        
+        # 重置缓冲区位置
+        buffer.seek(0)
+        
+        # 创建支持关闭回调的FileResponse子类
+        class CleanupFileResponse(FileResponse):
+            def __init__(self, *args, buffer, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.buffer = buffer
+            
+            def close(self):
+                super().close()
+                if not self.buffer.closed:
+                    self.buffer.close()
 
+        response = CleanupFileResponse(
+            buffer,
+            as_attachment=True,
+            filename=f"submissions_{course.name}.zip",
+            content_type='application/zip',
+            buffer=buffer  # 传递buffer引用
+        )
+        response['Content-Length'] = buffer.getbuffer().nbytes
+        
+        return response
+    # endregion
 
 # endregion
-
-
 
 # region 小组视图集
 class GroupViewSet(viewsets.ModelViewSet):
@@ -811,6 +911,7 @@ class GroupViewSet(viewsets.ModelViewSet):
         
         return Response(None, status=status.HTTP_201_CREATED)
     # endregion
+
 # endregion
 
 # region 代码视图集

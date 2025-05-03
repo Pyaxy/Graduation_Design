@@ -2,11 +2,11 @@
 import type { CreateGroupRequestData, GroupData } from "../../apis/type"
 import { usePagination } from "@/common/composables/usePagination"
 import { useUserStore } from "@/pinia/stores/user"
-import { CirclePlus, RefreshRight } from "@element-plus/icons-vue"
+import { CirclePlus, RefreshRight, Download } from "@element-plus/icons-vue"
 import { ElMessage, ElMessageBox } from "element-plus"
 import { storeToRefs } from "pinia"
 import { ref, reactive, onMounted, watch } from "vue"
-import { createGroup, getGroupsList, joinGroup, leaveGroup } from "../../apis"
+import { createGroup, getGroupsList, joinGroup, leaveGroup, downloadSubmissions } from "../../apis"
 import { useRouter } from "vue-router"
 
 const props = defineProps<{
@@ -166,6 +166,34 @@ function showActions() {
   return props.courseStatus === "not_started"
 }
 
+// 下载提交信息
+function handleDownloadSubmissions() {
+  groupsLoading.value = true
+  downloadSubmissions(props.courseId)
+    .then((response) => {
+      // 创建下载链接
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `submissions_${props.courseId}.zip`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      ElMessage.success("下载成功")
+    })
+    .catch((error) => {
+      if (error.message) {
+        ElMessage.error(error.message)
+      } else {
+        ElMessage.error("下载失败")
+      }
+    })
+    .finally(() => {
+      groupsLoading.value = false
+    })
+}
+
 // 监听分页参数的变化
 watch([() => groupPaginationData.currentPage, () => groupPaginationData.pageSize], getGroupsData, { immediate: true })
 
@@ -181,6 +209,14 @@ defineExpose({
       <div>
         <el-button v-if="userRole === 'STUDENT' && showActions()" type="primary" :icon="CirclePlus" @click="createGroupDialogVisible = true">
           创建小组
+        </el-button>
+        <el-button
+          v-if="(userRole === 'TEACHER' || userRole === 'ADMIN') && courseStatus === 'completed'"
+          type="success"
+          :icon="Download"
+          @click="handleDownloadSubmissions"
+        >
+          下载提交信息
         </el-button>
       </div>
       <div>
