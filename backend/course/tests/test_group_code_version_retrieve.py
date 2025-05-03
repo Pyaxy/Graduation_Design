@@ -316,7 +316,7 @@ class GroupCodeVersionRetrieveTestCase(APITestCase):
     
     def get_test_zip_file(self):
         """获取测试ZIP文件"""
-        test_zip_path = os.path.join(os.path.dirname(__file__), 'test_zip_file.zip')
+        test_zip_path = os.path.join(f'{os.path.dirname(__file__)}/test_files', 'test_zip_file.zip')
         with open(test_zip_path, 'rb') as f:
             zip_file = SimpleUploadedFile(
                 name='test_zip_file.zip',
