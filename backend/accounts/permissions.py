@@ -189,6 +189,19 @@ class CanDeleteSubjectFromCourse(permissions.BasePermission):
 # endregion
 
 # region 小组权限
+class CanSeeGroupDetail(permissions.BasePermission):
+    """检查用户是否可以查看小组详情"""
+    def has_object_permission(self, request, view, obj):
+        # 管理员可以查看任何小组
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师可以查看自己创建的课程的小组
+        if request.user.role == 'TEACHER':
+            return obj.course.teacher == request.user
+        # 学生可以查看自己加入的小组
+        if request.user.role == 'STUDENT':
+            return request.user in obj.students.all()
+        return False
 class CanJoinGroup(permissions.BasePermission):
     """检查用户是否可以加入小组"""
     def has_object_permission(self, request, view, obj):
@@ -209,5 +222,49 @@ class CanLeaveGroup(permissions.BasePermission):
         # 管理员可以踢出任何学生
         if request.user.role == 'ADMIN':
             return True
+        return False
+    
+class CanSelectSubject(permissions.BasePermission):
+    """检查用户是否可以选题"""
+    def has_object_permission(self, request, view, obj):
+        # 学生组长可以选题
+        if request.user.role == 'STUDENT':
+            return obj.creator == request.user
+        # 管理员可以选题
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师可以选题
+        if request.user.role == 'TEACHER':
+            return obj.course.teacher == request.user
+        return False
+    
+class CanUnselectSubject(permissions.BasePermission):
+    """检查用户是否可以退选课题"""
+    def has_object_permission(self, request, view, obj):
+        # 学生组长可以退选课题
+        if request.user.role == 'STUDENT':
+            return obj.creator == request.user
+        # 管理员可以退选课题
+        if request.user.role == 'ADMIN':
+            return True
+        # 教师可以退选课题
+        if request.user.role == 'TEACHER':
+            return obj.course.teacher == request.user
+        return False
+# endregion
+
+# region 代码版本权限
+class CanSubmitCode(permissions.BasePermission):
+    """检查用户是否可以提交代码"""
+    def has_permission(self, request, view):
+        # 学生可以提交代码
+        if request.user.role == 'STUDENT':
+            return True
+        return False
+    
+    def has_object_permission(self, request, view, obj):
+        # 只有组长可以提交代码
+        if request.user.role == 'STUDENT':
+            return obj.creator == request.user
         return False
 # endregion

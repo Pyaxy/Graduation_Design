@@ -34,6 +34,12 @@ export interface CourseData {
   start_date: string
   // 结束日期
   end_date: string
+  // 最大小组人数
+  max_group_size: number
+  // 最小小组人数
+  min_group_size: number
+  // 最大课题选择数
+  max_subject_selections: number
 }
 
 // 创建或更新课程的请求数据
@@ -45,6 +51,7 @@ export interface CreateOrUpdateCourseRequestData {
   end_date: string
   max_group_size: number
   min_group_size: number
+  max_subject_selections: number
 }
 
 export interface CourseListResponse {
@@ -117,6 +124,11 @@ export interface GroupData {
   created_at: string
   // 更新时间
   updated_at: string
+  // 提交状态
+  submission: {
+    is_submitted: boolean
+    version_id: string | null
+  }
 }
 
 // 获取小组列表的响应数据

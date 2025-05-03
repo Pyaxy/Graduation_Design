@@ -2,14 +2,16 @@
 import type { CreateGroupRequestData, GroupData } from "../../apis/type"
 import { usePagination } from "@/common/composables/usePagination"
 import { useUserStore } from "@/pinia/stores/user"
-import { CirclePlus, RefreshRight } from "@element-plus/icons-vue"
+import { CirclePlus, RefreshRight, Download } from "@element-plus/icons-vue"
 import { ElMessage, ElMessageBox } from "element-plus"
 import { storeToRefs } from "pinia"
 import { ref, reactive, onMounted, watch } from "vue"
-import { createGroup, getGroupsList, joinGroup, leaveGroup } from "../../apis"
+import { createGroup, getGroupsList, joinGroup, leaveGroup, downloadSubmissions } from "../../apis"
+import { useRouter } from "vue-router"
 
 const props = defineProps<{
   courseId: string
+  courseStatus: string
 }>()
 
 const emit = defineEmits<{
@@ -30,6 +32,8 @@ const createGroupDialogVisible = ref(false)
 const createGroupForm = reactive<CreateGroupRequestData>({
   course: props.courseId
 })
+
+const router = useRouter()
 
 // 获取小组列表
 function getGroupsData() {
@@ -147,6 +151,48 @@ function handleCreateGroup() {
     })
 }
 
+function handleViewDetail(groupId: string) {
+  router.push({
+    name: "Group-Detail",
+    params: {
+      courseId: props.courseId,
+      groupId
+    }
+  })
+}
+
+// 判断是否显示操作按钮
+function showActions() {
+  return props.courseStatus === "not_started"
+}
+
+// 下载提交信息
+function handleDownloadSubmissions() {
+  groupsLoading.value = true
+  downloadSubmissions(props.courseId)
+    .then((response) => {
+      // 创建下载链接
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `submissions_${props.courseId}.zip`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      ElMessage.success("下载成功")
+    })
+    .catch((error) => {
+      if (error.message) {
+        ElMessage.error(error.message)
+      } else {
+        ElMessage.error("下载失败")
+      }
+    })
+    .finally(() => {
+      groupsLoading.value = false
+    })
+}
 
 // 监听分页参数的变化
 watch([() => groupPaginationData.currentPage, () => groupPaginationData.pageSize], getGroupsData, { immediate: true })
@@ -161,8 +207,16 @@ defineExpose({
     <!-- 工具栏 -->
     <div class="toolbar-wrapper">
       <div>
-        <el-button v-if="userRole === 'STUDENT'" type="primary" :icon="CirclePlus" @click="createGroupDialogVisible = true">
+        <el-button v-if="userRole === 'STUDENT' && showActions()" type="primary" :icon="CirclePlus" @click="createGroupDialogVisible = true">
           创建小组
+        </el-button>
+        <el-button
+          v-if="(userRole === 'TEACHER' || userRole === 'ADMIN') && courseStatus === 'completed'"
+          type="success"
+          :icon="Download"
+          @click="handleDownloadSubmissions"
+        >
+          下载提交信息
         </el-button>
       </div>
       <div>
@@ -176,10 +230,15 @@ defineExpose({
         <el-card class="group-card" shadow="hover">
           <template #header>
             <div class="group-header">
-              <span class="group-name">{{ group.name }}</span>
-              <el-tag v-if="group.creator.user_id === userStore.user_id" type="success" size="small">
-                组长
-              </el-tag>
+              <div class="group-name-wrapper">
+                <span class="group-name">{{ group.name }}</span>
+                <el-tag v-if="group.creator.user_id === userStore.user_id" type="success" size="small">
+                  组长
+                </el-tag>
+                <el-tag :type="group.submission.is_submitted ? 'success' : 'info'" size="small">
+                  {{ group.submission.is_submitted ? '已提交' : '未提交' }}
+                </el-tag>
+              </div>
             </div>
           </template>
           <div class="group-members">
@@ -192,7 +251,7 @@ defineExpose({
               </div>
               <div class="member-actions">
                 <el-button
-                  v-if="canRemoveMember(group, student)"
+                  v-if="canRemoveMember(group, student) && showActions()"
                   type="danger"
                   size="small"
                   @click="handleRemoveMember(group, student)"
@@ -204,12 +263,20 @@ defineExpose({
           </div>
           <div class="group-actions">
             <el-button
-              v-if="!group.students.some(s => s.user_id === userStore.user_id) && userRole === 'STUDENT'"
+              v-if="!group.students.some(s => s.user_id === userStore.user_id) && userRole === 'STUDENT' && showActions()"
               type="primary"
               size="small"
               @click="handleJoinGroup(group)"
             >
               加入小组
+            </el-button>
+            <el-button
+              v-if="group.students.some(student => student.user_id === userStore.user_id)"
+              type="primary"
+              text
+              @click="handleViewDetail(group.id)"
+            >
+              查看详情
             </el-button>
           </div>
         </el-card>
@@ -262,9 +329,15 @@ defineExpose({
     justify-content: space-between;
     align-items: center;
 
-    .group-name {
-      font-weight: bold;
-      font-size: 16px;
+    .group-name-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .group-name {
+        font-weight: bold;
+        font-size: 16px;
+      }
     }
   }
 

@@ -96,7 +96,11 @@ function createInstance() {
    */
   instance.interceptors.response.use(
     (response) => {
-      // 在 axios 的响应拦截器中，response 参数只有在请求成功时才会传入，所以成功则返回响应数据
+      // 如果是文件下载，直接返回整个 response
+      if (response.config.responseType === "blob") {
+        return response
+      }
+      // 其他情况返回 response.data
       return response.data
     },
     async (error) => {

@@ -1,3 +1,4 @@
+backend/course/tests/test_files/
 backend/media/
 frontend/node_modules/
 frontend/.vscode/

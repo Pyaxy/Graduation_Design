@@ -249,3 +249,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# 配置外部域名
+EXTERNAL_DOMAIN = os.getenv("EXTERNAL_DOMAIN", "http://localhost:8000")
