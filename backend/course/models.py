@@ -234,3 +234,48 @@ class GroupCodeFile(models.Model):
         self.is_previewable = ext.lower() in self.PREVIEWABLE_EXTENSIONS
         super().save(*args, **kwargs)
 # endregion
+
+# region 小组提交模型
+class GroupSubmission(models.Model):
+    """小组提交模型"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='submissions', verbose_name='小组')
+    code_version = models.ForeignKey(GroupCodeVersion, on_delete=models.CASCADE, related_name='submissions', verbose_name='代码版本')
+    is_submitted = models.BooleanField(default=False, verbose_name='是否已提交')
+    submitted_at = models.DateTimeField(null=True, blank=True, verbose_name='提交时间')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    
+    class Meta:
+        verbose_name = '小组提交'
+        verbose_name_plural = '小组提交'
+        ordering = ['-created_at']
+        unique_together = ['group', 'code_version']
+    
+    def __str__(self):
+        return f"{self.group.name} - {self.code_version.version}"
+    
+    def save(self, *args, **kwargs):
+        """重写save方法，在提交时自动设置提交时间"""
+        if self.is_submitted and not self.submitted_at:
+            self.submitted_at = timezone.now()
+        super().save(*args, **kwargs)
+
+class GroupSubmissionContribution(models.Model):
+    """小组提交贡献度模型"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    submission = models.ForeignKey(GroupSubmission, on_delete=models.CASCADE, related_name='contributions', verbose_name='提交')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submission_contributions', verbose_name='学生')
+    contribution = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='贡献度')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    
+    class Meta:
+        verbose_name = '提交贡献度'
+        verbose_name_plural = '提交贡献度'
+        ordering = ['-created_at']
+        unique_together = ['submission', 'student']
+    
+    def __str__(self):
+        return f"{self.student.name} - {self.contribution}%"
+# endregion

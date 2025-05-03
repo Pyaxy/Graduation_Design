@@ -152,6 +152,7 @@ onMounted(() => {
           <GroupList
             v-if="activeTab === 'groups' && courseId"
             :course-id="courseId"
+            :course-status="courseInfo?.status || 'not_started'"
             @refresh="getCourseDetailData"
           />
         </el-tab-pane>

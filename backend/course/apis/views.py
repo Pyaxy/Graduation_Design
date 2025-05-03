@@ -4,16 +4,16 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from ..models import Course, Group, GroupCodeVersion, GroupCodeFile
+from ..models import Course, Group, GroupCodeVersion, GroupCodeFile, GroupSubmission
 from .serializers import CourseSerializer, JoinCourseSerializer, LeaveCourseSerializer, UserSerializer, GroupCodeVersionSerializer, GroupCodeVersionCreateSerializer, GroupCodeVersionListSerializer
 import random
 import string
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from rest_framework.pagination import PageNumberPagination
-from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse, CanLeaveCourse, CanSeeStudents, CanJoinGroup, CanLeaveGroup, CanAddSubjectToCourse, CanSeeSubjects, CanDeleteSubjectFromCourse, CanSelectSubject, CanUnselectSubject, CanSeeGroupDetail
+from accounts.permissions import IsStudent, IsTeacherOrAdmin, CanUpdateCourse, CanDeleteCourse, CanLeaveCourse, CanSeeStudents, CanJoinGroup, CanLeaveGroup, CanAddSubjectToCourse, CanSeeSubjects, CanDeleteSubjectFromCourse, CanSelectSubject, CanUnselectSubject, CanSeeGroupDetail, CanSubmitCode
 from CodeCollab.api.decorators import standard_response
-from .serializers import CourseCreateSerializer, GroupSerializer, GroupCreateSerializer, LeaveGroupSerializer, AddSubjectSerializer, CourseSubjectSerializer, DeleteSubjectSerializer, SelectSubjectSerializer
+from .serializers import CourseCreateSerializer, GroupSerializer, GroupCreateSerializer, LeaveGroupSerializer, AddSubjectSerializer, CourseSubjectSerializer, DeleteSubjectSerializer, SelectSubjectSerializer, GroupSubmissionCreateSerializer
 from rest_framework.exceptions import ValidationError
 from accounts.models import User
 from django.http import Http404
@@ -460,6 +460,8 @@ class GroupViewSet(viewsets.ModelViewSet):
             permission_classes = [IsAuthenticated, CanSelectSubject]
         elif self.action == 'unselect_subject':
             permission_classes = [IsAuthenticated, CanUnselectSubject]
+        elif self.action == 'submit_code':
+            permission_classes = [IsAuthenticated, CanSubmitCode]
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
@@ -472,6 +474,8 @@ class GroupViewSet(viewsets.ModelViewSet):
             return GroupCreateSerializer
         elif self.action == 'leave':
             return LeaveGroupSerializer
+        elif self.action == 'submit_code':
+            return GroupSubmissionCreateSerializer
         return GroupSerializer
     # endregion
 
@@ -769,6 +773,44 @@ class GroupViewSet(viewsets.ModelViewSet):
         
         return Response(None, status=status.HTTP_204_NO_CONTENT)
     # endregion
+
+    # region 提交代码
+    @action(detail=True, methods=['post'])
+    @standard_response("提交代码成功")
+    def submit_code(self, request, *args, **kwargs):
+        """提交代码版本"""
+        try:
+            # 获取小组
+            group = self.get_object()
+        except Http404:
+            raise Http404("小组不存在")
+        
+        # 验证课程状态
+        course = group.course
+        if course.status != "in_progress":
+            raise ValidationError("课程未在进行中，无法提交代码")
+        if course.status == "completed":
+            raise ValidationError("课程已结束，无法提交代码")
+        
+        # 验证小组是否选择了课题
+        if not GroupSubject.objects.filter(group=group).exists():
+            raise ValidationError("小组未选择课题，无法提交代码")
+        
+        # 验证用户是否在小组中
+        if request.user not in group.students.all():
+            raise ValidationError("您不在该小组中，无法提交代码")
+        
+        # 验证小组是否已经提交过代码
+        if GroupSubmission.objects.filter(group=group).exists():
+            raise ValidationError("小组已经提交过代码")
+        
+        # 创建提交记录
+        serializer = self.get_serializer(data=request.data, context={'group': group})
+        serializer.is_valid(raise_exception=True)
+        serializer.save(group=group)
+        
+        return Response(None, status=status.HTTP_201_CREATED)
+    # endregion
 # endregion
 
 # region 代码视图集
@@ -850,6 +892,10 @@ class GroupCodeVersionViewSet(viewsets.ModelViewSet):
         # 验证小组是否选择了课题
         if not GroupSubject.objects.filter(group=group).exists():
             raise ValidationError("小组未选择课题，无法上传代码")
+        
+        # 验证小组是否已经提交过代码
+        if GroupSubmission.objects.filter(group=group).exists():
+            raise ValidationError("小组已经提交过代码，无法上传代码")
         
         # 创建版本
         version = serializer.save(group_id=group.id)

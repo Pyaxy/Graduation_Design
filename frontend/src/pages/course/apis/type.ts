@@ -124,6 +124,11 @@ export interface GroupData {
   created_at: string
   // 更新时间
   updated_at: string
+  // 提交状态
+  submission: {
+    is_submitted: boolean
+    version_id: string | null
+  }
 }
 
 // 获取小组列表的响应数据

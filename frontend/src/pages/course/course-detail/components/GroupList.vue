@@ -11,6 +11,7 @@ import { useRouter } from "vue-router"
 
 const props = defineProps<{
   courseId: string
+  courseStatus: string
 }>()
 
 const emit = defineEmits<{
@@ -160,6 +161,11 @@ function handleViewDetail(groupId: string) {
   })
 }
 
+// 判断是否显示操作按钮
+function showActions() {
+  return props.courseStatus === "not_started"
+}
+
 // 监听分页参数的变化
 watch([() => groupPaginationData.currentPage, () => groupPaginationData.pageSize], getGroupsData, { immediate: true })
 
@@ -173,7 +179,7 @@ defineExpose({
     <!-- 工具栏 -->
     <div class="toolbar-wrapper">
       <div>
-        <el-button v-if="userRole === 'STUDENT'" type="primary" :icon="CirclePlus" @click="createGroupDialogVisible = true">
+        <el-button v-if="userRole === 'STUDENT' && showActions()" type="primary" :icon="CirclePlus" @click="createGroupDialogVisible = true">
           创建小组
         </el-button>
       </div>
@@ -188,10 +194,15 @@ defineExpose({
         <el-card class="group-card" shadow="hover">
           <template #header>
             <div class="group-header">
-              <span class="group-name">{{ group.name }}</span>
-              <el-tag v-if="group.creator.user_id === userStore.user_id" type="success" size="small">
-                组长
-              </el-tag>
+              <div class="group-name-wrapper">
+                <span class="group-name">{{ group.name }}</span>
+                <el-tag v-if="group.creator.user_id === userStore.user_id" type="success" size="small">
+                  组长
+                </el-tag>
+                <el-tag :type="group.submission.is_submitted ? 'success' : 'info'" size="small">
+                  {{ group.submission.is_submitted ? '已提交' : '未提交' }}
+                </el-tag>
+              </div>
             </div>
           </template>
           <div class="group-members">
@@ -204,7 +215,7 @@ defineExpose({
               </div>
               <div class="member-actions">
                 <el-button
-                  v-if="canRemoveMember(group, student)"
+                  v-if="canRemoveMember(group, student) && showActions()"
                   type="danger"
                   size="small"
                   @click="handleRemoveMember(group, student)"
@@ -216,7 +227,7 @@ defineExpose({
           </div>
           <div class="group-actions">
             <el-button
-              v-if="!group.students.some(s => s.user_id === userStore.user_id) && userRole === 'STUDENT'"
+              v-if="!group.students.some(s => s.user_id === userStore.user_id) && userRole === 'STUDENT' && showActions()"
               type="primary"
               size="small"
               @click="handleJoinGroup(group)"
@@ -282,9 +293,15 @@ defineExpose({
     justify-content: space-between;
     align-items: center;
 
-    .group-name {
-      font-weight: bold;
-      font-size: 16px;
+    .group-name-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .group-name {
+        font-weight: bold;
+        font-size: 16px;
+      }
     }
   }
 

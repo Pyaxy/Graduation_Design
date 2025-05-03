@@ -1,18 +1,17 @@
 <script lang="ts" setup>
-import type { GroupData, GroupCodeVersionList, GroupCodeVersionResponse, GroupCodeVersion, GroupCodeFile } from "./apis/type"
+import type { GroupCodeFile, GroupCodeVersion, GroupCodeVersionList, GroupCodeVersionResponse, GroupData } from "./apis/type"
 import CourseSubjectList from "@/pages/course/course-detail/components/CourseSubjectList.vue"
 import { useUserStore } from "@/pinia/stores/user"
+import { Document, ArrowDown, ArrowRight } from "@element-plus/icons-vue"
+import dayjs from "dayjs"
 import { ElForm, ElMessage } from "element-plus"
 import hljs from "highlight.js"
 import { storeToRefs } from "pinia"
-import { ref, onMounted, computed, h } from "vue"
+import { computed, defineComponent, h, onMounted, PropType, ref, watch } from "vue"
 import { useRoute, useRouter } from "vue-router"
-import { createGroupCodeVersion, getGroupDetail, listGroupCodeVersions, selectSubject, unselectSubject, getGroupCodeVersion } from "./apis"
-import "highlight.js/styles/github.css"
-import { defineComponent, PropType } from "vue"
-import { Document, ArrowDown, ArrowRight } from "@element-plus/icons-vue"
+import { createGroupCodeVersion, getGroupCodeVersion, getGroupDetail, listGroupCodeVersions, selectSubject, submitCode, unselectSubject } from "./apis"
 import FileTreeNode from "./components/FileTreeNode.vue"
-import dayjs from "dayjs"
+import "highlight.js/styles/github.css"
 
 const route = useRoute()
 const router = useRouter()
@@ -26,12 +25,18 @@ const userStore = useUserStore()
 const { role: userRole } = storeToRefs(userStore)
 
 const versionDialogVisible = ref(false)
+const submitDialogVisible = ref(false)
 const versionForm = ref({
   version: "",
   description: "",
   zipFile: null as File | null
 })
+const submitForm = ref({
+  code_version_id: "",
+  contributions: [] as Array<{ student_id: string, contribution: number }>
+})
 const versionFormRef = ref<InstanceType<typeof ElForm> | null>(null)
+const submitFormRef = ref<InstanceType<typeof ElForm> | null>(null)
 const versions = ref<Array<{ id: string, version: string }>>([])
 
 const selectedVersion = ref<string>("")
@@ -143,11 +148,6 @@ async function fetchVersions() {
   }
 }
 
-function handleViewVersion(version: any) {
-  // TODO: 实现查看版本详情
-  console.log("查看版本:", version)
-}
-
 async function fetchVersionFiles(versionId: string) {
   try {
     const response = await getGroupCodeVersion(groupId, versionId)
@@ -228,9 +228,72 @@ const currentPath = computed(() => {
   return selectedFile.value.path?.split("/") || []
 })
 
+// 验证贡献度总和
+function validateContributions() {
+  const total = submitForm.value.contributions.reduce((sum, item) => sum + item.contribution, 0)
+  if (Math.abs(total - 100) > 0.01) { // 允许0.01的误差
+    ElMessage.warning(`贡献度总和必须为100%，当前总和为${total.toFixed(2)}%`)
+    return false
+  }
+  return true
+}
+
+// 处理提交代码
+function handleSubmitCode() {
+  if (!submitFormRef.value) return
+
+  submitFormRef.value.validate(async (valid: boolean) => {
+    if (valid && validateContributions()) {
+      try {
+        // 将贡献度数据转换为字符串格式
+        const contributions = submitForm.value.contributions.map(contribution =>
+          JSON.stringify(contribution)
+        )
+
+        await submitCode(groupId, {
+          code_version_id: submitForm.value.code_version_id,
+          contributions
+        })
+        ElMessage.success("提交成功")
+        submitDialogVisible.value = false
+        submitForm.value = {
+          code_version_id: "",
+          contributions: []
+        }
+        getGroupDetailData()
+      } catch (error: any) {
+        ElMessage.error(error.message || "提交失败")
+      }
+    }
+  })
+}
+
+// 初始化贡献度表单
+function initContributions() {
+  if (!groupInfo.value) return
+
+  submitForm.value.contributions = groupInfo.value.students.map(student => ({
+    student_id: student.user_id,
+    contribution: 0
+  }))
+}
+
+// 监听提交对话框的显示状态
+watch(submitDialogVisible, (newVal) => {
+  if (newVal) {
+    initContributions()
+  }
+})
+
 onMounted(() => {
   getGroupDetailData()
   fetchVersions()
+  // 如果已提交，自动加载提交的版本
+  watch(() => groupInfo.value?.submission, (newVal) => {
+    if (newVal?.is_submitted && newVal.version_id) {
+      fetchVersionFiles(newVal.version_id)
+    }
+  }, { immediate: true })
 })
 </script>
 
@@ -262,6 +325,15 @@ onMounted(() => {
           <div class="meta-item">
             <span class="label">更新时间：</span>
             <span class="value">{{ groupInfo.updated_at }}</span>
+          </div>
+          <div class="meta-item">
+            <span class="label">提交状态：</span>
+            <el-tag :type="groupInfo.submission.is_submitted ? 'success' : 'info'">
+              {{ groupInfo.submission.is_submitted ? '已提交' : '未提交' }}
+            </el-tag>
+            <span v-if="groupInfo.submission.is_submitted" class="ml-2">
+              版本ID: {{ groupInfo.submission.version_id }}
+            </span>
           </div>
         </div>
       </template>
@@ -338,15 +410,22 @@ onMounted(() => {
         <el-tab-pane label="代码版本" name="code-version">
           <div class="tab-content">
             <div class="version-header">
-              <el-select v-model="selectedVersion" placeholder="选择版本" @change="fetchVersionFiles">
-                <el-option
-                  v-for="version in versions"
-                  :key="version.id"
-                  :label="version.version"
-                  :value="version.id"
-                />
-              </el-select>
-              <el-button type="primary" @click="versionDialogVisible = true">创建新版本</el-button>
+              <template v-if="!groupInfo?.submission?.is_submitted">
+                <el-select v-model="selectedVersion" placeholder="选择版本" @change="fetchVersionFiles">
+                  <el-option
+                    v-for="version in versions"
+                    :key="version.id"
+                    :label="version.version"
+                    :value="version.id"
+                  />
+                </el-select>
+                <el-button type="primary" @click="versionDialogVisible = true">创建新版本</el-button>
+                <el-button type="success" @click="submitDialogVisible = true">提交代码</el-button>
+              </template>
+              <template v-else>
+                <el-tag type="success" size="large">已提交</el-tag>
+                <span class="ml-2">版本ID: {{ groupInfo.submission.version_id }}</span>
+              </template>
             </div>
 
             <div v-if="versionDetail" class="version-info">
@@ -433,6 +512,51 @@ onMounted(() => {
         <el-button type="primary" @click="handleCreateVersion">创建</el-button>
       </template>
     </el-dialog>
+
+    <!-- 提交代码对话框 -->
+    <el-dialog v-model="submitDialogVisible" title="提交代码" width="50%">
+      <el-alert
+        title="重要提示"
+        type="warning"
+        :closable="false"
+        description="代码提交只能提交一次，提交后将无法修改，请确认无误后再提交。"
+        show-icon
+        class="mb-4"
+      />
+      <el-form :model="submitForm" ref="submitFormRef" label-width="120px">
+        <el-form-item label="选择版本" prop="code_version_id" :rules="[{ required: true, message: '请选择版本', trigger: 'change' }]">
+          <el-select v-model="submitForm.code_version_id" placeholder="请选择版本">
+            <el-option
+              v-for="version in versions"
+              :key="version.id"
+              :label="version.version"
+              :value="version.id"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="成员贡献度" prop="contributions">
+          <div v-for="(contribution, index) in submitForm.contributions" :key="index" class="contribution-item">
+            <div class="student-info">
+              <span>{{ groupInfo?.students.find(s => s.user_id === contribution.student_id)?.name }}</span>
+              <el-tag v-if="contribution.student_id === groupInfo?.creator.user_id" type="success" size="small">组长</el-tag>
+            </div>
+            <el-input-number
+              v-model="contribution.contribution"
+              :min="0"
+              :max="100"
+              :precision="2"
+              :step="10"
+              @change="(val) => validateContributions()"
+            />
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="submitDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSubmitCode">提交</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -465,11 +589,17 @@ onMounted(() => {
     .meta-item {
       display: flex;
       align-items: center;
-      gap: 8px;
+      margin-bottom: 8px;
+    }
 
-      .label {
-        color: #606266;
-      }
+    .meta-item .label {
+      color: #606266;
+      margin-right: 8px;
+      min-width: 80px;
+    }
+
+    .meta-item .value {
+      color: #303133;
     }
   }
 }
@@ -630,5 +760,31 @@ onMounted(() => {
 
 .version-info {
   margin: 20px 0;
+}
+
+.contribution-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 8px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+
+  .student-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.submission-status {
+  display: flex;
+  align-items: center;
+}
+
+.submission-status .version-id {
+  color: #606266;
+  font-size: 14px;
 }
 </style>

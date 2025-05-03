@@ -252,3 +252,19 @@ class CanUnselectSubject(permissions.BasePermission):
             return obj.course.teacher == request.user
         return False
 # endregion
+
+# region 代码版本权限
+class CanSubmitCode(permissions.BasePermission):
+    """检查用户是否可以提交代码"""
+    def has_permission(self, request, view):
+        # 学生可以提交代码
+        if request.user.role == 'STUDENT':
+            return True
+        return False
+    
+    def has_object_permission(self, request, view, obj):
+        # 只有组长可以提交代码
+        if request.user.role == 'STUDENT':
+            return obj.creator == request.user
+        return False
+# endregion

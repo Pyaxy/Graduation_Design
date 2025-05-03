@@ -47,6 +47,10 @@ export interface GroupData {
     created_at: string
     updated_at: string
   }>
+  submission: {
+    is_submitted: boolean
+    version_id: string | null
+  }
 }
 
 export interface GroupCodeVersion {

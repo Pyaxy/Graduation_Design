@@ -49,3 +49,15 @@ export function getGroupCodeVersion(groupId: string, versionId: string) {
     method: "GET"
   })
 }
+
+// 提交代码
+export function submitCode(groupId: string, data: {
+  code_version_id: string
+  contributions: string[]
+}) {
+  return request({
+    method: "post",
+    url: `/groups/${groupId}/submit_code/`,
+    data
+  })
+}

@@ -1,9 +1,10 @@
 from rest_framework import serializers
-from ..models import Course, Group, CourseSubject, GroupSubject, GroupCodeFile, GroupCodeVersion
+from ..models import Course, Group, CourseSubject, GroupSubject, GroupCodeFile, GroupCodeVersion, GroupSubmission, GroupSubmissionContribution
 from accounts.models import User
 from django.http import Http404
 from subject.api.serializers import SubjectSerializer, PublicSubjectSerializer
 import uuid
+import json
 
 
 
@@ -214,10 +215,27 @@ class GroupSerializer(serializers.ModelSerializer):
     creator = UserSerializer(read_only=True)
     students = UserSerializer(many=True, read_only=True)
     group_subjects = GroupSubjectSerializer(many=True, read_only=True)
+    submission = serializers.SerializerMethodField()
+    
     class Meta:
         model = Group
-        fields = ['id', 'name', 'course', 'students', 'creator', 'created_at', 'updated_at', 'max_students', 'min_students', 'group_subjects']
-        read_only_fields = ['id', 'created_at', 'updated_at', 'course', 'creator', 'max_students', 'min_students', 'group_subjects']
+        fields = ['id', 'name', 'course', 'students', 'creator', 'created_at', 'updated_at', 
+                 'max_students', 'min_students', 'group_subjects', 'submission']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'course', 'creator', 
+                          'max_students', 'min_students', 'group_subjects', 'submission']
+    
+    def get_submission(self, obj):
+        """获取小组提交信息"""
+        submission = GroupSubmission.objects.filter(group=obj, is_submitted=True).first()
+        if submission:
+            return {
+                'is_submitted': True,
+                'version_id': submission.code_version.id
+            }
+        return {
+            'is_submitted': False,
+            'version_id': None
+        }
     # endregion
 
 
@@ -314,6 +332,125 @@ class GroupCodeVersionListSerializer(serializers.ModelSerializer):
         model = GroupCodeVersion
         fields = ['id', 'version']
         read_only_fields = ['id', 'version']
+# endregion
+
+# region 小组提交序列化器
+class GroupSubmissionContributionSerializer(serializers.ModelSerializer):
+    """小组提交贡献度序列化器"""
+    student = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = GroupSubmissionContribution
+        fields = ['student', 'contribution']
+        read_only_fields = ['student']
+
+class GroupSubmissionSerializer(serializers.ModelSerializer):
+    """小组提交序列化器"""
+    code_version = GroupCodeVersionSerializer(read_only=True)
+    contributions = GroupSubmissionContributionSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = GroupSubmission
+        fields = ['id', 'code_version', 'is_submitted', 'submitted_at', 'created_at', 'updated_at', 'contributions']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+class GroupSubmissionCreateSerializer(serializers.ModelSerializer):
+    """小组提交创建序列化器"""
+    code_version_id = serializers.UUIDField(required=True)
+    contributions = serializers.ListField(
+        child=serializers.CharField(),
+        required=True
+    )
+    
+    class Meta:
+        model = GroupSubmission
+        fields = ['code_version_id', 'contributions']
+    
+    def validate_code_version_id(self, value):
+        """验证代码版本是否存在且属于该小组"""
+        group = self.context['group']
+        if not GroupCodeVersion.objects.filter(id=value, group=group).exists():
+            raise serializers.ValidationError("该代码版本不存在或不属于该小组")
+        return value
+    
+    def validate_contributions(self, value):
+        """验证贡献度数据"""
+        group = self.context['group']
+        group_students = set(group.students.all())
+        submitted_students = set()
+        total_contribution = 0
+        
+        # 验证每个贡献度数据
+        for contribution_str in value:
+            try:
+                # 将字符串转换为字典
+                contribution = eval(contribution_str)
+                if not isinstance(contribution, dict):
+                    raise serializers.ValidationError("贡献度数据格式错误，必须是对象格式")
+            except (SyntaxError, NameError):
+                raise serializers.ValidationError("贡献度数据格式错误，必须是有效的字典格式")
+            
+            if 'student_id' not in contribution or 'contribution' not in contribution:
+                raise serializers.ValidationError("贡献度数据格式错误，必须包含 student_id 和 contribution 字段")
+            
+            try:
+                student = User.objects.get(user_id=contribution['student_id'])
+            except User.DoesNotExist:
+                raise serializers.ValidationError(f"学生 {contribution['student_id']} 不存在")
+            
+            if student not in group_students:
+                raise serializers.ValidationError(f"学生 {student.name} 不在该小组中")
+            
+            if student in submitted_students:
+                raise serializers.ValidationError(f"学生 {student.name} 的贡献度重复提交")
+            
+            try:
+                contribution_value = float(contribution['contribution'])
+            except (TypeError, ValueError):
+                raise serializers.ValidationError(f"学生 {student.name} 的贡献度必须是数字")
+            
+            if contribution_value < 0 or contribution_value > 100:
+                raise serializers.ValidationError(f"学生 {student.name} 的贡献度必须在0-100之间")
+            
+            submitted_students.add(student)
+            total_contribution += contribution_value
+        
+        # 验证是否包含所有小组成员
+        if submitted_students != group_students:
+            missing_students = group_students - submitted_students
+            raise serializers.ValidationError(f"缺少以下学生的贡献度: {', '.join(s.name for s in missing_students)}")
+        
+        # 验证贡献度总和是否为100
+        if abs(total_contribution - 100) > 0.01:  # 允许0.01的误差
+            raise serializers.ValidationError("所有学生的贡献度之和必须为100")
+        
+        return value
+    
+    def create(self, validated_data):
+        """创建提交记录和贡献度记录"""
+        group = self.context['group']
+        code_version = GroupCodeVersion.objects.get(id=validated_data['code_version_id'])
+        contributions = validated_data.pop('contributions')
+        
+        # 创建提交记录
+        submission = GroupSubmission.objects.create(
+            group=group,
+            code_version=code_version,
+            is_submitted=True
+        )
+        
+        # 创建贡献度记录
+        for contribution_str in contributions:
+            # 将字符串转换为字典
+            contribution = eval(contribution_str)
+            student = User.objects.get(user_id=contribution['student_id'])
+            GroupSubmissionContribution.objects.create(
+                submission=submission,
+                student=student,
+                contribution=contribution['contribution']
+            )
+        
+        return submission
 # endregion
 
 
