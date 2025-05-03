@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from accounts.models import User
+from CodeCollab import settings
 from subject.models import Subject, PublicSubject
 
 
@@ -34,13 +35,28 @@ class SubjectSerializer(serializers.ModelSerializer):
         ]
         
     def get_description_file_url(self, obj):
-        """获取文件的完整URL"""
-        if obj.description_file:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.description_file.url)
-            return obj.description_file.url
-        return None
+        """动态生成可访问的文件URL"""
+        if not obj.description_file:
+            return None
+
+        # 优先从设置中获取外部域名
+        external_domain = getattr(settings, 'EXTERNAL_DOMAIN', None)
+        
+        # 没有配置外部域名时，尝试通过请求生成
+        request = self.context.get('request')
+        if request and not external_domain:
+            return request.build_absolute_uri(obj.description_file.url)
+
+        # 构建最终URL
+        url_path = obj.description_file.url
+        if external_domain:
+            # 移除可能的重复协议
+            clean_domain = external_domain.rstrip('/')
+            if '://' not in clean_domain:
+                clean_domain = f'http://{clean_domain}'  # 默认HTTP协议
+            return f"{clean_domain}{url_path}"
+            
+        return url_path  # 保底返回原始路径
 
 
 class SubjectCreateSerializer(serializers.ModelSerializer):
