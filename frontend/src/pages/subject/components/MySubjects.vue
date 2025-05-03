@@ -21,7 +21,7 @@ const router = useRouter()
 
 // #region 查看详情
 function handleViewDetail(row: SubjectData) {
-  router.push(`subject-detail/${row.id}`)
+  router.push(`/code_week/subject-detail/${row.id}?isPublic=false`)
 }
 // #endregion
 
