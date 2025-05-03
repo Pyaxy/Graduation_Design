@@ -37,7 +37,7 @@ function getDetail() {
   }
 
   loading.value = true
-  if (isPublic) {
+  if (isPublic.value) {
     getPublicSubjectDetail(Number(id))
       .then(({ data }) => {
         subjectDetail.value = data
