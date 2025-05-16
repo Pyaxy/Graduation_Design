@@ -93,7 +93,7 @@ async function handleLogin() {
     <Owl v-if="isFocus" :close-eyes="isFocus" />
     <div class="login-box">
       <div class="login-title">
-        <h2>V3 Admin Vite</h2>
+        <h2>CodeCollab</h2>
       </div>
       <el-form
         ref="loginFormRef"

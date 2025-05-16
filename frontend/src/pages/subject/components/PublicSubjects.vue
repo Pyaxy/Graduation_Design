@@ -125,7 +125,17 @@ watch([() => paginationData.currentPage, () => paginationData.pageSize], getSubj
       <div class="table-wrapper">
         <el-table :data="tableData">
           <el-table-column prop="title" label="课题标题" align="center" />
-          <el-table-column prop="description" label="课题描述" align="center" />
+          <el-table-column prop="description" label="课题描述" align="center">
+            <template #default="scope">
+              <el-tooltip
+                :content="scope.row.description"
+                placement="top"
+                :show-after="500"
+              >
+                <span class="description-text">{{ scope.row.description }}</span>
+              </el-tooltip>
+            </template>
+          </el-table-column>
           <el-table-column prop="creator.name" label="创建人" align="center" />
           <el-table-column prop="languages" label="适用语言" align="center">
             <template #default="scope">
@@ -192,5 +202,13 @@ watch([() => paginationData.currentPage, () => paginationData.pageSize], getSubj
 
 .mx-1 {
   margin: 0 4px;
+}
+
+.description-text {
+  display: inline-block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

@@ -104,18 +104,6 @@ onMounted(() => {
             @refresh="getCourseDetailData"
           />
         </el-tab-pane>
-        <el-tab-pane label="课程作业" name="assignments">
-          <!-- 课程作业内容 -->
-          <div class="tab-content">
-            课程作业内容
-          </div>
-        </el-tab-pane>
-        <el-tab-pane label="课程资源" name="resources">
-          <!-- 课程资源内容 -->
-          <div class="tab-content">
-            课程资源内容
-          </div>
-        </el-tab-pane>
         <el-tab-pane label="课题列表" name="course-subjects">
           <CourseSubjectList
             v-if="activeTab === 'course-subjects' && courseId"

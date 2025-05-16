@@ -111,7 +111,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
         elif user.role == 'STUDENT':
             return queryset.filter(Q(status='APPROVED') & Q(public_status='APPROVED'))
         elif user.role == 'TEACHER':
-            return queryset.filter(Q(creator=user) | (Q(status='APPROVED') & Q(public_status='APPROVED')))
+            return queryset.filter(Q(creator=user))
         elif user.role == 'ADMIN':
             return queryset
         return queryset.none()

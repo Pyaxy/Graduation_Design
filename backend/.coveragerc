@@ -1,0 +1,35 @@
+[run]
+source = .
+omit =
+    */migrations/*
+    */tests/*
+    */venv/*
+    */__init__.py
+    manage.py
+    */settings/*
+    */wsgi.py
+    */asgi.py
+    */CodeCollab/api/decorators.py
+    */polls/*
+    */tests.py
+    */urls.py
+    */subject/views.py
+    */accounts/forms.py
+    */accounts/permissions.py
+    */accounts/views.py
+    */subject/validators.py
+    
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+    except ImportError:
+    def main()
+
+[html]
+directory = coverage_html 

@@ -5,3 +5,4 @@ djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
 django-filter
+coverage>=7.4.0  # 测试覆盖率工具

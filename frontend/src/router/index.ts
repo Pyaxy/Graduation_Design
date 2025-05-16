@@ -84,7 +84,8 @@ export const constantRoutes: RouteRecordRaw[] = [
     name: "Demo",
     meta: {
       title: "示例集合",
-      elIcon: "DataBoard"
+      elIcon: "DataBoard",
+      hidden: true
     },
     children: [
       {
@@ -139,7 +140,8 @@ export const constantRoutes: RouteRecordRaw[] = [
         redirect: "/demo/composable-demo/use-fetch-select",
         name: "ComposableDemo",
         meta: {
-          title: "组合式函数"
+          title: "组合式函数",
+          hidden: true
         },
         children: [
           {
@@ -174,7 +176,8 @@ export const constantRoutes: RouteRecordRaw[] = [
     path: "/link",
     meta: {
       title: "文档链接",
-      elIcon: "Link"
+      elIcon: "Link",
+      hidden: true
     },
     children: [
       {
@@ -212,7 +215,8 @@ export const dynamicRoutes: RouteRecordRaw[] = [
       title: "权限演示",
       elIcon: "Lock",
       roles: ["ADMIN"],
-      alwaysShow: true
+      alwaysShow: true,
+      hidden: true
     },
     children: [
       {
@@ -241,7 +245,8 @@ export const dynamicRoutes: RouteRecordRaw[] = [
     name: "Student",
     meta: {
       title: "学生测试栏1",
-      roles: ["STUDENT"]
+      roles: ["STUDENT"],
+      hidden: true
     },
     children: [
       {
