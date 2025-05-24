@@ -83,10 +83,12 @@ const features = [
 }
 
 .features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
+  flex-direction: row;
   gap: 20px;
   margin-top: 30px;
+  overflow-x: auto;
+  min-width: 0;
 }
 
 .feature-card {
